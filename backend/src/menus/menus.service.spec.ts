@@ -34,6 +34,7 @@ describe('MenusService', () => {
       get: jest.fn(),
       incrby: jest.fn(),
       decrby: jest.fn(),
+      eval: jest.fn(),
     };
 
     redisServiceMock = {
@@ -186,12 +187,19 @@ describe('MenusService', () => {
   describe('getActiveMenu', () => {
     it('should load active menu and fetch live quantities from Redis', async () => {
       const dishes = [
-        { id: 'dish-1', name: 'Pilau', preparedQuantity: 50, isSoldOut: false },
+        {
+          id: 'dish-1',
+          name: 'Pilau',
+          preparedQuantity: 50,
+          isSoldOut: false,
+          dietaryTags: ['Halal'],
+        },
         {
           id: 'dish-2',
           name: 'Beef Stew',
           preparedQuantity: 30,
           isSoldOut: false,
+          dietaryTags: ['None'],
         },
       ];
       menuRepoMock.findOne.mockResolvedValue({
@@ -211,6 +219,90 @@ describe('MenusService', () => {
       expect(redisClientMock.set).toHaveBeenCalledWith(
         'dish:availability:dish-2',
         30,
+      );
+    });
+
+    it('should filter dishes by dietary tags in memory', async () => {
+      const dishes = [
+        {
+          id: 'dish-1',
+          name: 'Pilau',
+          preparedQuantity: 50,
+          isSoldOut: false,
+          dietaryTags: ['Halal'],
+        },
+        {
+          id: 'dish-2',
+          name: 'Beef Stew',
+          preparedQuantity: 30,
+          isSoldOut: false,
+          dietaryTags: ['None'],
+        },
+      ];
+      menuRepoMock.findOne.mockResolvedValue({
+        id: 'menu-123',
+        isActive: true,
+        dishes,
+      });
+      redisClientMock.get.mockResolvedValueOnce('45');
+
+      const result = await service.getActiveMenu(['Halal']);
+
+      expect(result.dishes.length).toBe(1);
+      expect(result.dishes[0].id).toBe('dish-1');
+    });
+  });
+
+  describe('reservePortions', () => {
+    it('should atomically reserve portions using eval code', async () => {
+      redisClientMock.eval.mockResolvedValue(40);
+
+      const result = await service.reservePortions('dish-1', 10);
+      expect(result).toBe(40);
+      expect(redisClientMock.eval).toHaveBeenCalled();
+    });
+
+    it('should reload from DB and retry if Redis key does not exist', async () => {
+      redisClientMock.eval.mockResolvedValueOnce(-1).mockResolvedValueOnce(35);
+
+      dishRepoMock.findOne.mockResolvedValue({
+        id: 'dish-1',
+        name: 'Pilau',
+        preparedQuantity: 50,
+        isSoldOut: false,
+        menu: { isActive: true },
+      });
+
+      const result = await service.reservePortions('dish-1', 15);
+      expect(result).toBe(35);
+      expect(redisClientMock.set).toHaveBeenCalledWith(
+        'dish:availability:dish-1',
+        50,
+      );
+    });
+
+    it('should throw BadRequestException if portions are insufficient', async () => {
+      redisClientMock.eval.mockResolvedValue(-2);
+      dishRepoMock.findOne.mockResolvedValue({
+        id: 'dish-1',
+        name: 'Pilau',
+      });
+
+      await expect(service.reservePortions('dish-1', 100)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('releasePortions', () => {
+    it('should release portions back to Redis', async () => {
+      redisClientMock.incrby.mockResolvedValue(55);
+
+      const result = await service.releasePortions('dish-1', 5);
+      expect(result).toBe(55);
+      expect(redisClientMock.incrby).toHaveBeenCalledWith(
+        'dish:availability:dish-1',
+        5,
       );
     });
   });

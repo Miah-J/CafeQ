@@ -139,7 +139,7 @@ export class MenusService {
     return savedDish;
   }
 
-  async getActiveMenu(): Promise<any> {
+  async getActiveMenu(dietaryTags?: string[]): Promise<any> {
     const menu = await this.menuRepository.findOne({
       where: { isActive: true },
       relations: { dishes: true },
@@ -152,7 +152,18 @@ export class MenusService {
     const redis = this.redisService.getClient();
     const dishesWithLiveQuantity = [];
 
-    for (const dish of menu.dishes) {
+    // Filter dishes by dietary tags in memory if provided
+    let dishes = menu.dishes;
+    if (dietaryTags && dietaryTags.length > 0) {
+      const lowerTags = dietaryTags.map((t) => t.toLowerCase());
+      dishes = dishes.filter((dish) => {
+        if (!dish.dietaryTags) return false;
+        const dishTags = dish.dietaryTags.map((t) => t.toLowerCase());
+        return lowerTags.every((tag) => dishTags.includes(tag));
+      });
+    }
+
+    for (const dish of dishes) {
       const key = `dish:availability:${dish.id}`;
       const liveVal = await redis.get(key);
 
@@ -167,6 +178,7 @@ export class MenusService {
       dishesWithLiveQuantity.push({
         ...dish,
         liveQuantity: Math.max(0, liveQuantity),
+        isSoldOut: dish.isSoldOut || liveQuantity <= 0,
       });
     }
 
@@ -174,5 +186,71 @@ export class MenusService {
       ...menu,
       dishes: dishesWithLiveQuantity,
     };
+  }
+
+  async reservePortions(dishId: string, quantity: number): Promise<number> {
+    const redis = this.redisService.getClient();
+    const key = `dish:availability:${dishId}`;
+
+    const script = `
+      local key = KEYS[1]
+      local quantity = tonumber(ARGV[1])
+      local current = redis.call('GET', key)
+      if not current then
+          return -1
+      end
+      current = tonumber(current)
+      if current >= quantity then
+          local next_val = redis.call('DECRBY', key, quantity)
+          return next_val
+      else
+          return -2
+      end
+    `;
+
+    const result = await redis.eval(script, 1, key, quantity);
+    const code = Number(result);
+
+    if (code === -1) {
+      const dish = await this.dishRepository.findOne({
+        where: { id: dishId },
+        relations: { menu: true },
+      });
+      if (!dish) {
+        throw new NotFoundException(`Dish with ID ${dishId} not found`);
+      }
+      if (!dish.menu.isActive) {
+        throw new BadRequestException('Dish is not on an active menu');
+      }
+
+      const initialQuantity = dish.isSoldOut ? 0 : dish.preparedQuantity;
+      await redis.set(key, initialQuantity);
+
+      const retryResult = await redis.eval(script, 1, key, quantity);
+      const retryCode = Number(retryResult);
+      if (retryCode === -2) {
+        throw new BadRequestException(
+          `Insufficient portions left for dish: ${dish.name}`,
+        );
+      }
+      return retryCode;
+    }
+
+    if (code === -2) {
+      const dish = await this.dishRepository.findOne({ where: { id: dishId } });
+      const dishName = dish ? dish.name : 'Selected dish';
+      throw new BadRequestException(
+        `Insufficient portions left for dish: ${dishName}`,
+      );
+    }
+
+    return code;
+  }
+
+  async releasePortions(dishId: string, quantity: number): Promise<number> {
+    const redis = this.redisService.getClient();
+    const key = `dish:availability:${dishId}`;
+    const result = await redis.incrby(key, quantity);
+    return result;
   }
 }

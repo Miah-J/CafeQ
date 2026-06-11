@@ -34,13 +34,13 @@ Update each checkbox to [x] once the phase is confirmed working and merged to ma
 - [x] Jest unit tests written for MenuService
 
 ### Phase 1.4 — Menu Browsing & Filtering
-- [ ] Authenticated menu browsing endpoint (returns dishes with live Redis portion count)
-- [ ] Dietary filter query parameter working (Halal, Vegetarian, Vegan, Gluten-Free, Dairy-Free)
-- [ ] Sold-out dishes returned with zero count and sold_out flag
-- [ ] Redis atomic decrement wired to availability counter
-- [ ] Frontend: Menu browsing page with dietary filter chips rendered
-- [ ] Frontend: DishCard component with Add to Order button, sold-out state
-- [ ] Frontend: Real-time portion counter updates (polling or Socket.IO)
+- [x] Authenticated menu browsing endpoint (returns dishes with live Redis portion count)
+- [x] Dietary filter query parameter working (Halal, Vegetarian, Vegan, Gluten-Free, Dairy-Free)
+- [x] Sold-out dishes returned with zero count and sold_out flag
+- [x] Redis atomic decrement wired to availability counter
+- [x] Frontend: Menu browsing page with dietary filter chips rendered
+- [x] Frontend: DishCard component with Add to Order button, sold-out state
+- [x] Frontend: Real-time portion counter updates (polling or Socket.IO)
 
 ### Phase 1.5 — Order Placement
 - [ ] Order creation endpoint (builds order_items from selected dishes)

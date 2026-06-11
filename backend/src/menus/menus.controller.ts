@@ -7,6 +7,7 @@ import {
   Param,
   Body,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { MenusService } from './menus.service';
 import { CreateMenuDto, CreateDishDto, UpdateDishDto } from './dto/menus.dto';
@@ -62,7 +63,8 @@ export class MenusController {
 
   @Get('active')
   @UseGuards(JwtAuthGuard)
-  async getActiveMenu(): Promise<unknown> {
-    return this.menusService.getActiveMenu();
+  async getActiveMenu(@Query('tags') tags?: string): Promise<unknown> {
+    const dietaryTags = tags ? tags.split(',') : undefined;
+    return this.menusService.getActiveMenu(dietaryTags);
   }
 }
