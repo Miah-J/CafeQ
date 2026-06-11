@@ -25,13 +25,13 @@ Update each checkbox to [x] once the phase is confirmed working and merged to ma
 - [x] Jest unit tests written for AuthService
 
 ### Phase 1.3 — Menu Management
-- [ ] Admin publish menu endpoint (creates Menu + Dish records)
-- [ ] Admin edit/remove dish before publish
-- [ ] Admin mark dish sold out during service
-- [ ] Dish availability written to Redis on publish
-- [ ] Menu immediately visible to all authenticated users on publish
-- [ ] Postman tests passing for all menu endpoints
-- [ ] Jest unit tests written for MenuService
+- [x] Admin publish menu endpoint (creates Menu + Dish records)
+- [x] Admin edit/remove dish before publish
+- [x] Admin mark dish sold out during service
+- [x] Dish availability written to Redis on publish
+- [x] Menu immediately visible to all authenticated users on publish
+- [x] Postman tests passing for all menu endpoints
+- [x] Jest unit tests written for MenuService
 
 ### Phase 1.4 — Menu Browsing & Filtering
 - [ ] Authenticated menu browsing endpoint (returns dishes with live Redis portion count)

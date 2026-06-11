@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -106,7 +111,7 @@ export class AuthService {
   async resetPassword(token: string, passwordRaw: string) {
     const redis = this.redisService.getClient();
     const email = await redis.get(`reset-token:${token}`);
-    
+
     if (!email) {
       throw new BadRequestException('Invalid or expired reset token');
     }

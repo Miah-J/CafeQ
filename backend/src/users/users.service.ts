@@ -2,6 +2,18 @@ import { Injectable, ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 
+export interface DecryptedUser {
+  id: string;
+  email: string;
+  passwordHash: string;
+  role: string;
+  fullName: string;
+  phoneNumber: string | null;
+  studentNumber: string | null;
+  department: string | null;
+  stationNumber: string | null;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -18,26 +30,27 @@ export class UsersService {
     studentNumber?: string;
     department?: string;
     stationNumber?: string;
-  }) {
-    const cryptoKey = this.configService.get<string>('pgcrypto.key');
+  }): Promise<DecryptedUser> {
+    const cryptoKey =
+      this.configService.get<string>('pgcrypto.key') || 'default_key';
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
       // 1. Check if email already exists
-      const existingUser = await queryRunner.manager.query(
-        `SELECT id FROM users WHERE email = $1`,
-        [data.email]
-      );
+      const existingUser = await queryRunner.manager.query<
+        Array<{ id: string }>
+      >(`SELECT id FROM users WHERE email = $1`, [data.email]);
       if (existingUser.length > 0) {
         throw new ConflictException('Email already exists');
       }
 
       // 2. Insert into users base table
-      const userResult = await queryRunner.manager.query(
+      // CASE statement handles optional phone number to prevent pgp_sym_encrypt from throwing on null
+      const userResult = await queryRunner.manager.query<Array<{ id: string }>>(
         `INSERT INTO users (email, password_hash, role, full_name, phone_number)
-         VALUES ($1, $2, $3, pgp_sym_encrypt($4, $5), pgp_sym_encrypt($6, $5))
+         VALUES ($1, $2, $3, pgp_sym_encrypt($4, $5), CASE WHEN $6::text IS NULL THEN NULL ELSE pgp_sym_encrypt($6, $5) END)
          RETURNING id`,
         [
           data.email,
@@ -46,38 +59,41 @@ export class UsersService {
           data.fullName,
           cryptoKey,
           data.phoneNumber || null,
-        ]
+        ],
       );
-      
+
       const userId = userResult[0].id;
 
       // 3. Insert into role-specific tables
       if (data.role === 'Student') {
         if (!data.studentNumber) {
-          throw new ConflictException('Student number is required for Student role');
+          throw new ConflictException(
+            'Student number is required for Student role',
+          );
         }
-        
-        const existingStudent = await queryRunner.manager.query(
-          `SELECT id FROM students WHERE student_number = $1`,
-          [data.studentNumber]
-        );
+
+        const existingStudent = await queryRunner.manager.query<
+          Array<{ id: string }>
+        >(`SELECT id FROM students WHERE student_number = $1`, [
+          data.studentNumber,
+        ]);
         if (existingStudent.length > 0) {
           throw new ConflictException('Student number already exists');
         }
 
         await queryRunner.manager.query(
           `INSERT INTO students (id, student_number) VALUES ($1, $2)`,
-          [userId, data.studentNumber]
+          [userId, data.studentNumber],
         );
       } else if (data.role === 'Admin') {
         await queryRunner.manager.query(
           `INSERT INTO administrators (id, department) VALUES ($1, $2)`,
-          [userId, data.department || null]
+          [userId, data.department || null],
         );
       } else if (data.role === 'Cashier') {
         await queryRunner.manager.query(
           `INSERT INTO cashiers (id, station_number) VALUES ($1, $2)`,
-          [userId, data.stationNumber || null]
+          [userId, data.stationNumber || null],
         );
       }
 
@@ -86,6 +102,7 @@ export class UsersService {
       return {
         id: userId,
         email: data.email,
+        passwordHash: data.passwordHash,
         role: data.role,
         fullName: data.fullName,
         phoneNumber: data.phoneNumber || null,
@@ -101,9 +118,10 @@ export class UsersService {
     }
   }
 
-  async findByEmail(email: string) {
-    const cryptoKey = this.configService.get<string>('pgcrypto.key');
-    const userResult = await this.dataSource.query(
+  async findByEmail(email: string): Promise<DecryptedUser | null> {
+    const cryptoKey =
+      this.configService.get<string>('pgcrypto.key') || 'default_key';
+    const userResult = await this.dataSource.query<DecryptedUser[]>(
       `SELECT u.id, u.email, u.password_hash as "passwordHash", u.role,
               pgp_sym_decrypt(u.full_name, $2) as "fullName",
               pgp_sym_decrypt(u.phone_number, $2) as "phoneNumber",
@@ -115,7 +133,7 @@ export class UsersService {
        LEFT JOIN administrators a ON u.id = a.id
        LEFT JOIN cashiers c ON u.id = c.id
        WHERE u.email = $1`,
-      [email, cryptoKey]
+      [email, cryptoKey],
     );
 
     if (userResult.length === 0) {
@@ -125,10 +143,11 @@ export class UsersService {
     return userResult[0];
   }
 
-  async findById(id: string) {
-    const cryptoKey = this.configService.get<string>('pgcrypto.key');
-    const userResult = await this.dataSource.query(
-      `SELECT u.id, u.email, u.role,
+  async findById(id: string): Promise<DecryptedUser | null> {
+    const cryptoKey =
+      this.configService.get<string>('pgcrypto.key') || 'default_key';
+    const userResult = await this.dataSource.query<DecryptedUser[]>(
+      `SELECT u.id, u.email, u.password_hash as "passwordHash", u.role,
               pgp_sym_decrypt(u.full_name, $2) as "fullName",
               pgp_sym_decrypt(u.phone_number, $2) as "phoneNumber",
               s.student_number as "studentNumber",
@@ -139,7 +158,7 @@ export class UsersService {
        LEFT JOIN administrators a ON u.id = a.id
        LEFT JOIN cashiers c ON u.id = c.id
        WHERE u.id = $1`,
-      [id, cryptoKey]
+      [id, cryptoKey],
     );
 
     if (userResult.length === 0) {
@@ -149,10 +168,10 @@ export class UsersService {
     return userResult[0];
   }
 
-  async updatePassword(id: string, passwordHash: string) {
+  async updatePassword(id: string, passwordHash: string): Promise<void> {
     await this.dataSource.query(
       `UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-      [passwordHash, id]
+      [passwordHash, id],
     );
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 
@@ -18,7 +19,9 @@ export class EmailService implements OnModuleInit {
           pass: testAccount.pass,
         },
       });
-      this.logger.log(`Ethereal Mock SMTP initialized. User: ${testAccount.user}`);
+      this.logger.log(
+        `Ethereal Mock SMTP initialized. User: ${testAccount.user}`,
+      );
     } catch (error) {
       this.logger.error('Failed to create mock SMTP transport', error);
     }
@@ -26,11 +29,15 @@ export class EmailService implements OnModuleInit {
 
   async sendResetEmail(email: string, token: string) {
     const resetLink = `http://localhost:3000/reset-password?token=${token}`;
-    
-    this.logger.log(`[Email Mock] Sending reset email to ${email} with token: ${token}`);
-    
+
+    this.logger.log(
+      `[Email Mock] Sending reset email to ${email} with token: ${token}`,
+    );
+
     if (!this.transporter) {
-      this.logger.warn(`SMTP transporter not initialized. Reset link: ${resetLink}`);
+      this.logger.warn(
+        `SMTP transporter not initialized. Reset link: ${resetLink}`,
+      );
       return { previewUrl: null, resetLink };
     }
 

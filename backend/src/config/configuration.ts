@@ -1,6 +1,8 @@
 export default () => ({
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:159600@localhost:5432/cafeq',
+    url:
+      process.env.DATABASE_URL ||
+      'postgresql://postgres:159600@localhost:5432/cafeq',
   },
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',

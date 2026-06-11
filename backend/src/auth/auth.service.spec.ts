@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
@@ -37,7 +38,9 @@ describe('AuthService', () => {
     };
 
     emailServiceMock = {
-      sendResetEmail: jest.fn().mockResolvedValue({ previewUrl: 'http://ethereal/preview' }),
+      sendResetEmail: jest
+        .fn()
+        .mockResolvedValue({ previewUrl: 'http://ethereal/preview' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -128,10 +131,15 @@ describe('AuthService', () => {
         email: 'student@strathmore.edu',
       });
 
-      const result = await service.resetPassword('valid_token', 'new_password123');
+      const result = await service.resetPassword(
+        'valid_token',
+        'new_password123',
+      );
 
       expect(usersServiceMock.updatePassword).toHaveBeenCalled();
-      expect(redisClientMock.del).toHaveBeenCalledWith('reset-token:valid_token');
+      expect(redisClientMock.del).toHaveBeenCalledWith(
+        'reset-token:valid_token',
+      );
       expect(result.message).toBe('Password reset successfully');
     });
 
