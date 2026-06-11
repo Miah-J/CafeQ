@@ -7,11 +7,20 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { PaymentsService, MpesaCallbackPayload } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { DecryptedUser } from '../users/users.service';
+import { IsUUID, IsNotEmpty } from 'class-validator';
+
+export class TriggerStkPushDto {
+  @IsUUID()
+  @IsNotEmpty()
+  orderId: string;
+}
 
 @Controller('payments')
 export class PaymentsController {
@@ -21,9 +30,9 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   async triggerStkPush(
     @CurrentUser() user: DecryptedUser,
-    @Body('orderId') orderId: string,
+    @Body() dto: TriggerStkPushDto,
   ) {
-    return this.paymentsService.triggerStkPush(orderId, user.id);
+    return this.paymentsService.triggerStkPush(dto.orderId, user.id);
   }
 
   @Get('status/:orderId')
@@ -34,6 +43,9 @@ export class PaymentsController {
 
   @Post('mpesa/callback')
   @HttpCode(HttpStatus.OK)
+  @UsePipes(
+    new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false }),
+  )
   async mpesaCallback(@Body() payload: MpesaCallbackPayload) {
     await this.paymentsService.handleCallback(payload);
     return { ResultCode: 0, ResultDesc: 'Success' };
@@ -41,6 +53,9 @@ export class PaymentsController {
 
   @Post('mock-callback')
   @HttpCode(HttpStatus.OK)
+  @UsePipes(
+    new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false }),
+  )
   async mockCallback(@Body() payload: MpesaCallbackPayload) {
     await this.paymentsService.handleCallback(payload);
     return { ResultCode: 0, ResultDesc: 'Success' };
