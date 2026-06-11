@@ -12,6 +12,29 @@ import { Order } from '../orders/entities/order.entity';
 import { UsersService } from '../users/users.service';
 import { MenusService } from '../menus/menus.service';
 
+export interface MpesaCallbackItem {
+  Name: string;
+  Value?: string | number;
+}
+
+export interface MpesaCallbackMetadata {
+  Item: MpesaCallbackItem[];
+}
+
+export interface MpesaStkCallback {
+  MerchantRequestID: string;
+  CheckoutRequestID: string;
+  ResultCode: number;
+  ResultDesc: string;
+  CallbackMetadata?: MpesaCallbackMetadata;
+}
+
+export interface MpesaCallbackPayload {
+  Body: {
+    stkCallback: MpesaStkCallback;
+  };
+}
+
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
@@ -56,24 +79,24 @@ export class PaymentsService {
   }
 
   private isMockMode(): boolean {
-    const callbackUrl = this.configService.get<string>('mpesa.callbackUrl') || '';
-    const passkey = this.configService.get<string>('mpesa.passkey') || '';
-    return (
-      callbackUrl.includes('localhost') ||
-      callbackUrl.includes('127.0.0.1') ||
-      passkey.includes('your_daraja_passkey_here')
-    );
+    return this.configService.get<boolean>('mpesa.simulate') === true;
   }
 
   async getAccessToken(): Promise<string> {
     const consumerKey = this.configService.get<string>('mpesa.consumerKey');
-    const consumerSecret = this.configService.get<string>('mpesa.consumerSecret');
+    const consumerSecret = this.configService.get<string>(
+      'mpesa.consumerSecret',
+    );
 
     if (!consumerKey || !consumerSecret) {
-      throw new BadRequestException('M-Pesa API credentials are not configured');
+      throw new BadRequestException(
+        'M-Pesa API credentials are not configured',
+      );
     }
 
-    const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+    const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString(
+      'base64',
+    );
 
     const res = await this.fetchWithRetry(
       'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
@@ -87,7 +110,9 @@ export class PaymentsService {
     if (!res.ok) {
       const errorText = await res.text();
       this.logger.error(`Failed to fetch Daraja Access Token: ${errorText}`);
-      throw new BadRequestException('Failed to authenticate with M-Pesa Daraja API');
+      throw new BadRequestException(
+        'Failed to authenticate with M-Pesa Daraja API',
+      );
     }
 
     const data = (await res.json()) as { access_token: string };
@@ -105,12 +130,16 @@ export class PaymentsService {
     }
 
     if (order.status !== 'PENDING') {
-      throw new BadRequestException(`Order has already been processed with status: ${order.status}`);
+      throw new BadRequestException(
+        `Order has already been processed with status: ${order.status}`,
+      );
     }
 
     const user = await this.usersService.findById(userId);
     if (!user || !user.phoneNumber) {
-      throw new BadRequestException('User does not have a registered phone number for M-Pesa push');
+      throw new BadRequestException(
+        'User does not have a registered phone number for M-Pesa push',
+      );
     }
 
     const formattedPhone = this.formatPhoneNumber(user.phoneNumber);
@@ -118,9 +147,11 @@ export class PaymentsService {
 
     // If callback is local, execute mock flow
     if (this.isMockMode()) {
-      this.logger.warn(`Entering M-Pesa Local Simulation Mode for order: ${orderId}`);
+      this.logger.warn(
+        `Entering M-Pesa Local Simulation Mode for order: ${orderId}`,
+      );
       const mockCheckoutId = `ws_CO_mock_${Date.now()}`;
-      
+
       const payment = new Payment();
       payment.orderId = orderId;
       payment.amount = amount;
@@ -137,11 +168,15 @@ export class PaymentsService {
               MerchantRequestID: 'mock-merchant-id',
               CheckoutRequestID: mockCheckoutId,
               ResultCode: 0,
-              ResultDesc: 'The service request is processed successfully (Mock)',
+              ResultDesc:
+                'The service request is processed successfully (Mock)',
               CallbackMetadata: {
                 Item: [
                   { Name: 'Amount', Value: amount },
-                  { Name: 'MpesaReceiptNumber', Value: `MOCK${Date.now().toString().substring(5)}` },
+                  {
+                    Name: 'MpesaReceiptNumber',
+                    Value: `MOCK${Date.now().toString().substring(5)}`,
+                  },
                   { Name: 'PhoneNumber', Value: Number(formattedPhone) },
                 ],
               },
@@ -155,11 +190,14 @@ export class PaymentsService {
 
     // Live Safaricom Daraja STK Push path
     const token = await this.getAccessToken();
-    const shortcode = this.configService.get<string>('mpesa.shortcode') || '174379';
+    const shortcode =
+      this.configService.get<string>('mpesa.shortcode') || '174379';
     const passkey = this.configService.get<string>('mpesa.passkey');
     const callbackUrl = this.configService.get<string>('mpesa.callbackUrl');
     const timestamp = this.getMpesaTimestamp();
-    const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
+    const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString(
+      'base64',
+    );
 
     const payload = {
       BusinessShortCode: shortcode,
@@ -190,7 +228,9 @@ export class PaymentsService {
     if (!res.ok) {
       const errorText = await res.text();
       this.logger.error(`Daraja STK Push Request Failed: ${errorText}`);
-      throw new BadRequestException('Failed to dispatch STK Push via Safaricom API');
+      throw new BadRequestException(
+        'Failed to dispatch STK Push via Safaricom API',
+      );
     }
 
     const data = (await res.json()) as { CheckoutRequestID: string };
@@ -205,23 +245,25 @@ export class PaymentsService {
     return this.paymentRepository.save(payment);
   }
 
-  async handleCallback(payload: any): Promise<void> {
+  async handleCallback(payload: MpesaCallbackPayload): Promise<void> {
     const stkCallback = payload?.Body?.stkCallback;
     if (!stkCallback) {
       this.logger.error('Invalid callback payload format');
       return;
     }
 
-    const checkoutRequestId = stkCallback.CheckoutRequestID as string;
+    const checkoutRequestId = stkCallback.CheckoutRequestID;
     const resultCode = Number(stkCallback.ResultCode);
-    const resultDesc = stkCallback.ResultDesc as string;
+    const resultDesc = stkCallback.ResultDesc;
 
     const payment = await this.paymentRepository.findOne({
       where: { transactionReference: checkoutRequestId },
     });
 
     if (!payment) {
-      this.logger.error(`Payment not found for checkout request ID: ${checkoutRequestId}`);
+      this.logger.error(
+        `Payment not found for checkout request ID: ${checkoutRequestId}`,
+      );
       return;
     }
 
@@ -241,9 +283,9 @@ export class PaymentsService {
 
       // Retrieve receipt number from callback metadata
       const items = stkCallback.CallbackMetadata?.Item || [];
-      const receiptItem = items.find((i: any) => i.Name === 'MpesaReceiptNumber');
-      if (receiptItem && receiptItem.Value) {
-        payment.transactionReference = receiptItem.Value as string;
+      const receiptItem = items.find((i) => i.Name === 'MpesaReceiptNumber');
+      if (receiptItem && receiptItem.Value !== undefined) {
+        payment.transactionReference = String(receiptItem.Value);
       }
 
       await this.paymentRepository.save(payment);
@@ -251,7 +293,9 @@ export class PaymentsService {
       order.status = 'CONFIRMED';
       await this.orderRepository.save(order);
 
-      this.logger.log(`Payment confirmed for Order ID ${order.id}. Reference: ${payment.transactionReference}`);
+      this.logger.log(
+        `Payment confirmed for Order ID ${order.id}. Reference: ${payment.transactionReference}`,
+      );
     } else {
       // Payment Failed
       payment.status = 'FAILED';
@@ -265,25 +309,33 @@ export class PaymentsService {
       for (const item of order.items) {
         try {
           await this.menusService.releasePortions(item.dishId, item.quantity);
-          this.logger.log(`Portions released back to Redis: ${item.dishId} x${item.quantity}`);
-        } catch (err: any) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          this.logger.error(`Failed to release portions: ${err.message || err}`);
+          this.logger.log(
+            `Portions released back to Redis: ${item.dishId} x${item.quantity}`,
+          );
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          this.logger.error(`Failed to release portions: ${errMsg}`);
         }
       }
 
-      this.logger.warn(`Payment failed for Order ID ${order.id}. Code: ${resultCode}. Desc: ${resultDesc}`);
+      this.logger.warn(
+        `Payment failed for Order ID ${order.id}. Code: ${resultCode}. Desc: ${resultDesc}`,
+      );
     }
   }
 
-  async getPaymentStatus(orderId: string): Promise<{ status: string; transactionReference: string | null }> {
+  async getPaymentStatus(
+    orderId: string,
+  ): Promise<{ status: string; transactionReference: string | null }> {
     const payment = await this.paymentRepository.findOne({
       where: { orderId },
       order: { createdAt: 'DESC' },
     });
 
     if (!payment) {
-      throw new NotFoundException(`No payment logs found for order ID: ${orderId}`);
+      throw new NotFoundException(
+        `No payment logs found for order ID: ${orderId}`,
+      );
     }
 
     return {
@@ -305,14 +357,18 @@ export class PaymentsService {
       clearTimeout(id);
 
       if (!res.ok && retries > 0 && res.status >= 500) {
-        this.logger.warn(`Retrying Daraja API request to ${url}. Attempts remaining: ${retries}`);
+        this.logger.warn(
+          `Retrying Daraja API request to ${url}. Attempts remaining: ${retries}`,
+        );
         await new Promise((resolve) => setTimeout(resolve, delay));
         return this.fetchWithRetry(url, options, retries - 1, delay * 2);
       }
       return res;
     } catch (err) {
       if (retries > 0) {
-        this.logger.warn(`Retrying Daraja API request to ${url} due to error: ${err}. Attempts remaining: ${retries}`);
+        this.logger.warn(
+          `Retrying Daraja API request to ${url} due to error: ${err}. Attempts remaining: ${retries}`,
+        );
         await new Promise((resolve) => setTimeout(resolve, delay));
         return this.fetchWithRetry(url, options, retries - 1, delay * 2);
       }

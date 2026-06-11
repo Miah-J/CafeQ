@@ -1,5 +1,14 @@
-import { Controller, Post, Get, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
-import { PaymentsService } from './payments.service';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { PaymentsService, MpesaCallbackPayload } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { DecryptedUser } from '../users/users.service';
@@ -25,14 +34,14 @@ export class PaymentsController {
 
   @Post('mpesa/callback')
   @HttpCode(HttpStatus.OK)
-  async mpesaCallback(@Body() payload: any) {
+  async mpesaCallback(@Body() payload: MpesaCallbackPayload) {
     await this.paymentsService.handleCallback(payload);
     return { ResultCode: 0, ResultDesc: 'Success' };
   }
 
   @Post('mock-callback')
   @HttpCode(HttpStatus.OK)
-  async mockCallback(@Body() payload: any) {
+  async mockCallback(@Body() payload: MpesaCallbackPayload) {
     await this.paymentsService.handleCallback(payload);
     return { ResultCode: 0, ResultDesc: 'Success' };
   }

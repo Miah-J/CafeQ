@@ -23,7 +23,12 @@ export class Payment {
   @Column({ default: 'PENDING' })
   status: string; // PENDING, COMPLETED, FAILED, REFUNDED
 
-  @Column({ name: 'transaction_reference', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'transaction_reference',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   transactionReference: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })

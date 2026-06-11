@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 import { Test, TestingModule } from '@nestjs/testing';
 import { PaymentsService } from './payments.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -38,9 +38,12 @@ describe('PaymentsService', () => {
 
     configServiceMock = {
       get: jest.fn((key: string) => {
-        if (key === 'mpesa.callbackUrl') return 'http://localhost:3001/payments/mpesa/callback';
-        if (key === 'mpesa.passkey') return 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72dec1144c9f3';
+        if (key === 'mpesa.callbackUrl')
+          return 'http://localhost:3001/payments/mpesa/callback';
+        if (key === 'mpesa.passkey')
+          return 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72dec1144c9f3';
         if (key === 'mpesa.shortcode') return '174379';
+        if (key === 'mpesa.simulate') return true;
         return null;
       }),
     };
@@ -96,7 +99,10 @@ describe('PaymentsService', () => {
     });
 
     it('should throw BadRequestException if order is not PENDING', async () => {
-      orderRepoMock.findOne.mockResolvedValue({ id: 'order-123', status: 'CONFIRMED' });
+      orderRepoMock.findOne.mockResolvedValue({
+        id: 'order-123',
+        status: 'CONFIRMED',
+      });
 
       await expect(
         service.triggerStkPush('order-123', 'user-123'),
@@ -141,9 +147,7 @@ describe('PaymentsService', () => {
             ResultCode: 0,
             ResultDesc: 'Success',
             CallbackMetadata: {
-              Item: [
-                { Name: 'MpesaReceiptNumber', Value: 'MPESA_REF_123' },
-              ],
+              Item: [{ Name: 'MpesaReceiptNumber', Value: 'MPESA_REF_123' }],
             },
           },
         },
@@ -217,8 +221,14 @@ describe('PaymentsService', () => {
         }),
       );
 
-      expect(menusServiceMock.releasePortions).toHaveBeenCalledWith('dish-1', 2);
-      expect(menusServiceMock.releasePortions).toHaveBeenCalledWith('dish-2', 1);
+      expect(menusServiceMock.releasePortions).toHaveBeenCalledWith(
+        'dish-1',
+        2,
+      );
+      expect(menusServiceMock.releasePortions).toHaveBeenCalledWith(
+        'dish-2',
+        1,
+      );
     });
   });
 });
