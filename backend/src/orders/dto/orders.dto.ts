@@ -1,4 +1,13 @@
-import { IsUUID, IsInt, Min, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsUUID,
+  IsInt,
+  Min,
+  IsArray,
+  ValidateNested,
+  IsOptional,
+  IsString,
+  IsIn,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateOrderItemDto {
@@ -11,6 +20,20 @@ export class CreateOrderItemDto {
 }
 
 export class CreateOrderDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemDto)
+  items: CreateOrderItemDto[];
+}
+
+export class CreateCashierOrderDto {
+  @IsOptional()
+  @IsString()
+  studentNumber?: string;
+
+  @IsIn(['CASH', 'MPESA'])
+  paymentMethod: 'CASH' | 'MPESA';
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)

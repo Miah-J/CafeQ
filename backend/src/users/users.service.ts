@@ -174,4 +174,28 @@ export class UsersService {
       [passwordHash, id],
     );
   }
+
+  async findStudentByNumber(
+    studentNumber: string,
+  ): Promise<DecryptedUser | null> {
+    const cryptoKey =
+      this.configService.get<string>('pgcrypto.key') || 'default_key';
+    const result = await this.dataSource.query<DecryptedUser[]>(
+      `SELECT u.id, u.email, u.password_hash as "passwordHash", u.role,
+              pgp_sym_decrypt(u.full_name, $2) as "fullName",
+              pgp_sym_decrypt(u.phone_number, $2) as "phoneNumber",
+              s.student_number as "studentNumber",
+              NULL as department,
+              NULL as "stationNumber"
+       FROM users u
+       INNER JOIN students s ON u.id = s.id
+       WHERE s.student_number = $1`,
+      [studentNumber, cryptoKey],
+    );
+
+    if (result.length === 0) {
+      return null;
+    }
+    return result[0];
+  }
 }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Payment } from './entities/payment.entity';
 import { Wallet } from './entities/wallet.entity';
@@ -14,7 +14,7 @@ import { OrdersModule } from '../orders/orders.module';
     TypeOrmModule.forFeature([Payment, Order, Wallet]),
     UsersModule,
     MenusModule,
-    OrdersModule,
+    forwardRef(() => OrdersModule),
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService],

@@ -5,16 +5,24 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Dish } from '../menus/entities/dish.entity';
+import { Payment } from '../payments/entities/payment.entity';
 import { MenusService } from '../menus/menus.service';
+import { UsersService } from '../users/users.service';
+import { ReferenceService } from './reference.service';
+import { PaymentsService } from '../payments/payments.service';
 import { DataSource } from 'typeorm';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('OrdersService', () => {
   let service: OrdersService;
   let orderRepoMock: any;
   let orderItemRepoMock: any;
   let dishRepoMock: any;
+  let paymentRepoMock: any;
   let menusServiceMock: any;
+  let usersServiceMock: any;
+  let referenceServiceMock: any;
+  let paymentsServiceMock: any;
   let dataSourceMock: any;
   let managerMock: any;
   let queryRunnerMock: any;
@@ -25,9 +33,27 @@ describe('OrdersService', () => {
     };
     orderItemRepoMock = {};
     dishRepoMock = {};
+    paymentRepoMock = {
+      save: jest.fn((p) => Promise.resolve({ id: 'pay-id', ...p })),
+    };
     menusServiceMock = {
       reservePortions: jest.fn(),
       releasePortions: jest.fn(),
+    };
+    usersServiceMock = {
+      findById: jest.fn(),
+      findStudentByNumber: jest.fn(),
+    };
+    referenceServiceMock = {
+      generateReference: jest.fn(() =>
+        Promise.resolve({ referenceCode: 'ABC123' }),
+      ),
+      sendPaymentConfirmationSms: jest.fn(() => Promise.resolve()),
+    };
+    paymentsServiceMock = {
+      triggerStkPush: jest.fn(() =>
+        Promise.resolve({ id: 'mpesa-pay-id', status: 'PENDING' }),
+      ),
     };
 
     managerMock = {
@@ -54,8 +80,12 @@ describe('OrdersService', () => {
         { provide: getRepositoryToken(Order), useValue: orderRepoMock },
         { provide: getRepositoryToken(OrderItem), useValue: orderItemRepoMock },
         { provide: getRepositoryToken(Dish), useValue: dishRepoMock },
+        { provide: getRepositoryToken(Payment), useValue: paymentRepoMock },
         { provide: DataSource, useValue: dataSourceMock },
         { provide: MenusService, useValue: menusServiceMock },
+        { provide: UsersService, useValue: usersServiceMock },
+        { provide: ReferenceService, useValue: referenceServiceMock },
+        { provide: PaymentsService, useValue: paymentsServiceMock },
       ],
     }).compile();
 
@@ -130,6 +160,135 @@ describe('OrdersService', () => {
         2,
       );
       expect(queryRunnerMock.rollbackTransaction).toHaveBeenCalled();
+    });
+  });
+
+  describe('createCashierOrder', () => {
+    it('should create a CASH order immediately with CONFIRMED status and reference code', async () => {
+      usersServiceMock.findStudentByNumber.mockResolvedValue({
+        id: 'student-123',
+        fullName: 'John Doe',
+        studentNumber: 'STR001',
+        phoneNumber: '0712345678',
+      });
+
+      managerMock.findOne.mockResolvedValue({
+        id: 'dish-1',
+        name: 'Pilau',
+        price: 200.0,
+      });
+      menusServiceMock.reservePortions.mockResolvedValue(true);
+
+      const mockSavedOrder = {
+        id: 'cashier-order-1',
+        userId: 'student-123',
+        totalAmount: 400.0,
+        status: 'CONFIRMED',
+      };
+      managerMock.save.mockResolvedValue(mockSavedOrder);
+
+      const result = await service.createCashierOrder({
+        studentNumber: 'STR001',
+        paymentMethod: 'CASH',
+        items: [{ dishId: 'dish-1', quantity: 2 }],
+      });
+
+      expect(result.paymentStatus).toBe('SUCCESS');
+      expect(result.referenceCode).toBe('ABC123');
+      expect(referenceServiceMock.generateReference).toHaveBeenCalledWith(
+        'cashier-order-1',
+      );
+      expect(
+        referenceServiceMock.sendPaymentConfirmationSms,
+      ).toHaveBeenCalledWith('cashier-order-1', 'ABC123');
+      expect(queryRunnerMock.commitTransaction).toHaveBeenCalled();
+    });
+
+    it('should create an MPESA order with PENDING status and trigger STK push', async () => {
+      usersServiceMock.findStudentByNumber.mockResolvedValue({
+        id: 'student-123',
+        fullName: 'Jane Doe',
+        studentNumber: 'STR002',
+        phoneNumber: '0712345678',
+      });
+
+      managerMock.findOne.mockResolvedValue({
+        id: 'dish-1',
+        name: 'Ugali',
+        price: 100.0,
+      });
+      menusServiceMock.reservePortions.mockResolvedValue(true);
+
+      const mockSavedOrder = {
+        id: 'cashier-order-2',
+        userId: 'student-123',
+        totalAmount: 100.0,
+        status: 'PENDING',
+      };
+      managerMock.save.mockResolvedValue(mockSavedOrder);
+
+      const result = await service.createCashierOrder({
+        studentNumber: 'STR002',
+        paymentMethod: 'MPESA',
+        items: [{ dishId: 'dish-1', quantity: 1 }],
+      });
+
+      expect(result.paymentStatus).toBe('PENDING');
+      expect(result.referenceCode).toBeUndefined();
+      expect(paymentsServiceMock.triggerStkPush).toHaveBeenCalledWith(
+        'cashier-order-2',
+        'student-123',
+      );
+    });
+
+    it('should throw NotFoundException when student number is invalid', async () => {
+      usersServiceMock.findStudentByNumber.mockResolvedValue(null);
+
+      await expect(
+        service.createCashierOrder({
+          studentNumber: 'INVALID',
+          paymentMethod: 'CASH',
+          items: [{ dishId: 'dish-1', quantity: 1 }],
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException for MPESA without student number', async () => {
+      await expect(
+        service.createCashierOrder({
+          paymentMethod: 'MPESA',
+          items: [{ dishId: 'dish-1', quantity: 1 }],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should create anonymous CASH order without student number', async () => {
+      managerMock.findOne.mockResolvedValue({
+        id: 'dish-1',
+        name: 'Chapati',
+        price: 50.0,
+      });
+      menusServiceMock.reservePortions.mockResolvedValue(true);
+
+      const mockSavedOrder = {
+        id: 'anon-order-1',
+        userId: null,
+        totalAmount: 150.0,
+        status: 'CONFIRMED',
+      };
+      managerMock.save.mockResolvedValue(mockSavedOrder);
+
+      const result = await service.createCashierOrder({
+        paymentMethod: 'CASH',
+        items: [{ dishId: 'dish-1', quantity: 3 }],
+      });
+
+      expect(result.paymentStatus).toBe('SUCCESS');
+      expect(result.referenceCode).toBe('ABC123');
+      // SMS should NOT be dispatched for anonymous orders
+      expect(
+        referenceServiceMock.sendPaymentConfirmationSms,
+      ).not.toHaveBeenCalled();
     });
   });
 });

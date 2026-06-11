@@ -32,8 +32,12 @@ export default function Login() {
       localStorage.setItem("token", data.accessToken);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      // Redirect to menu page
-      router.push("/menu");
+      // Redirect based on role
+      if (data.user.role === "Cashier") {
+        router.push("/cashier");
+      } else {
+        router.push("/menu");
+      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
       setError(errMsg);
