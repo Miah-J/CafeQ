@@ -92,11 +92,11 @@ Update each checkbox to [x] once the phase is confirmed working and merged to ma
 - [x] Postman tests passing for cashier endpoints
 
 ### Phase 1.10 — Increment 1 Integration Test
-- [ ] Full end-to-end flow tested: register → browse → order → pay (M-Pesa sandbox) → receive reference
-- [ ] Walk-in cashier flow tested end-to-end
-- [ ] All Postman tests green
-- [ ] All Jest tests green
-- [ ] Code reviewed and merged to main via PR
+- [x] Full end-to-end flow tested: register → browse → order → pay (M-Pesa sandbox) → receive reference
+- [x] Walk-in cashier flow tested end-to-end
+- [x] All Postman tests green
+- [x] All Jest tests green
+- [x] Code reviewed and merged to main via PR
 
 ---
 
