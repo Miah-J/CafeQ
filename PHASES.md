@@ -66,12 +66,13 @@ Update each checkbox to [x] once the phase is confirmed working and merged to ma
 - [x] Postman tests passing for payment endpoints
 - [x] Jest unit tests written for PaymentService
 
-### Phase 1.7 — Bank Card & Wallet Payment
-- [ ] Payment gateway integration for bank card (secondary option)
-- [ ] In-app wallet balance shown at checkout
-- [ ] Partial wallet payment supported (wallet + M-Pesa or card for remainder)
-- [ ] Wallet balance updated immediately after payment confirmation
-- [ ] Postman tests passing
+### Phase 1.7 — Wallet Payment & M-Pesa Top-Up
+- [x] In-app wallet balance shown in header and checkout
+- [x] Wallet funding via M-Pesa STK Push implemented (Wallet Top-Up)
+- [x] Partial/Split wallet payment supported (wallet + M-Pesa STK Push for remainder)
+- [x] Automatic refund of wallet balance if split payment remainder fails
+- [x] Wallet balance updated immediately after payment confirmation
+- [x] Jest unit tests written and passing for all wallet & split payment workflows
 
 ### Phase 1.8 — Reference Number & SMS
 - [ ] Reference number generation service (6-char alphanumeric, hash of order UUID + timestamp, server-side only)

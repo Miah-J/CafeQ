@@ -22,9 +22,40 @@ export class TriggerStkPushDto {
   orderId: string;
 }
 
+export class ProcessPaymentDto {
+  @IsUUID()
+  @IsNotEmpty()
+  orderId: string;
+
+  @IsNotEmpty()
+  method: 'MPESA' | 'WALLET';
+
+  @IsNotEmpty()
+  useWallet: boolean;
+}
+
+export class TopUpWalletDto {
+  @IsNotEmpty()
+  amount: number;
+}
+
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Post('pay')
+  @UseGuards(JwtAuthGuard)
+  async processPayment(
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: ProcessPaymentDto,
+  ) {
+    return this.paymentsService.processPayment(
+      user.id,
+      dto.orderId,
+      dto.method,
+      dto.useWallet,
+    );
+  }
 
   @Post('stk-push')
   @UseGuards(JwtAuthGuard)
@@ -35,10 +66,32 @@ export class PaymentsController {
     return this.paymentsService.triggerStkPush(dto.orderId, user.id);
   }
 
+  @Post('wallet/topup')
+  @UseGuards(JwtAuthGuard)
+  async triggerWalletTopUp(
+    @CurrentUser() user: DecryptedUser,
+    @Body() dto: TopUpWalletDto,
+  ) {
+    return this.paymentsService.triggerWalletTopUp(user.id, Number(dto.amount));
+  }
+
+  @Get('wallet/balance')
+  @UseGuards(JwtAuthGuard)
+  async getWalletBalance(@CurrentUser() user: DecryptedUser) {
+    const balance = await this.paymentsService.getWalletBalance(user.id);
+    return { balance };
+  }
+
   @Get('status/:orderId')
   @UseGuards(JwtAuthGuard)
   async getPaymentStatus(@Param('orderId') orderId: string) {
     return this.paymentsService.getPaymentStatus(orderId);
+  }
+
+  @Get('status/payment/:paymentId')
+  @UseGuards(JwtAuthGuard)
+  async getPaymentStatusByPaymentId(@Param('paymentId') paymentId: string) {
+    return this.paymentsService.getPaymentStatusByPaymentId(paymentId);
   }
 
   @Post('mpesa/callback')
