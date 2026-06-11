@@ -7,22 +7,22 @@ Update each checkbox to [x] once the phase is confirmed working and merged to ma
 ## INCREMENT 1 — Core Ordering Loop
 
 ### Phase 1.1 — Project Scaffold & Database
-- [ ] Monorepo folder structure created (backend, frontend, forecasting)
-- [ ] PostgreSQL schema SQL generated and run against DB instance (all 12 tables)
-- [ ] All indexes, constraints, and triggers confirmed in DB
-- [ ] Redis instance connected and ping test passing
-- [ ] .env file populated with all secrets
-- [ ] GitHub repo created, initial commit pushed, branch strategy confirmed
+- [x] Monorepo folder structure created (backend, frontend, forecasting)
+- [x] PostgreSQL schema SQL generated and run against DB instance (all 12 tables)
+- [x] All indexes, constraints, and triggers confirmed in DB
+- [x] Redis instance connected and ping test passing
+- [x] .env file populated with all secrets
+- [x] GitHub repo created, initial commit pushed, branch strategy confirmed
 
 ### Phase 1.2 — Authentication
-- [ ] User registration endpoint (Student, Admin, Cashier roles)
-- [ ] JWT login endpoint (returns access token)
-- [ ] JWT guard applied to all protected routes
-- [ ] Role-based access control guards created (StudentGuard, AdminGuard, etc.)
-- [ ] Password reset via email working
-- [ ] Admin and Cashier account provisioning (no public registration)
-- [ ] Postman tests passing for all auth endpoints
-- [ ] Jest unit tests written for AuthService
+- [x] User registration endpoint (Student, Admin, Cashier roles)
+- [x] JWT login endpoint (returns access token)
+- [x] JWT guard applied to all protected routes
+- [x] Role-based access control guards created (StudentGuard, AdminGuard, etc.)
+- [x] Password reset via email working
+- [x] Admin and Cashier account provisioning (no public registration)
+- [x] Postman tests passing for all auth endpoints
+- [x] Jest unit tests written for AuthService
 
 ### Phase 1.3 — Menu Management
 - [ ] Admin publish menu endpoint (creates Menu + Dish records)
