@@ -26,4 +26,8 @@ export default () => ({
       'http://localhost:3001/payments/mpesa/callback',
     simulate: process.env.MPESA_SIMULATE === 'true',
   },
+  sms: {
+    apiKey: process.env.SMS_API_KEY,
+    username: process.env.SMS_USERNAME || 'sandbox',
+  },
 });

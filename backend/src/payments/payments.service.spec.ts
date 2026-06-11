@@ -8,6 +8,7 @@ import { Wallet } from './entities/wallet.entity';
 import { UsersService } from '../users/users.service';
 import { MenusService } from '../menus/menus.service';
 import { ConfigService } from '@nestjs/config';
+import { ReferenceService } from '../orders/reference.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('PaymentsService', () => {
@@ -18,6 +19,7 @@ describe('PaymentsService', () => {
   let usersServiceMock: any;
   let menusServiceMock: any;
   let configServiceMock: any;
+  let referenceServiceMock: any;
 
   beforeEach(async () => {
     paymentRepoMock = {
@@ -43,6 +45,16 @@ describe('PaymentsService', () => {
       releasePortions: jest.fn(),
     };
 
+    referenceServiceMock = {
+      generateReference: jest.fn(() =>
+        Promise.resolve({ referenceCode: 'MOCKRF' }),
+      ),
+      getReferenceByOrderId: jest.fn(() =>
+        Promise.resolve({ referenceCode: 'MOCKRF' }),
+      ),
+      sendPaymentConfirmationSms: jest.fn(() => Promise.resolve()),
+    };
+
     configServiceMock = {
       get: jest.fn((key: string) => {
         if (key === 'mpesa.callbackUrl')
@@ -64,6 +76,7 @@ describe('PaymentsService', () => {
         { provide: UsersService, useValue: usersServiceMock },
         { provide: MenusService, useValue: menusServiceMock },
         { provide: ConfigService, useValue: configServiceMock },
+        { provide: ReferenceService, useValue: referenceServiceMock },
       ],
     }).compile();
 
@@ -457,6 +470,7 @@ describe('PaymentsService', () => {
       expect(status).toEqual({
         status: 'COMPLETED',
         transactionReference: 'REF-123',
+        referenceCode: null,
       });
     });
 

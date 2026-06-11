@@ -11,8 +11,11 @@ export class Payment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'order_id', type: 'uuid' })
-  orderId: string;
+  @Column({ name: 'order_id', type: 'uuid', nullable: true })
+  orderId: string | null;
+
+  @Column({ name: 'user_id', type: 'uuid', nullable: true })
+  userId: string | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   amount: number;

@@ -75,12 +75,12 @@ Update each checkbox to [x] once the phase is confirmed working and merged to ma
 - [x] Jest unit tests written and passing for all wallet & split payment workflows
 
 ### Phase 1.8 — Reference Number & SMS
-- [ ] Reference number generation service (6-char alphanumeric, hash of order UUID + timestamp, server-side only)
-- [ ] Reference number stored in reference_numbers table with unique constraint
-- [ ] Reference number displayed prominently on order confirmation screen
-- [ ] SMS sent to student registered phone via gateway on payment confirmation
-- [ ] Frontend: Order confirmation screen showing reference number and SMS note
-- [ ] Jest unit tests written for ReferenceService
+- [x] Reference number generation service (6-char alphanumeric, hash of order UUID + timestamp, server-side only)
+- [x] Reference number stored in reference_numbers table with unique constraint
+- [x] Reference number displayed prominently on order confirmation screen
+- [x] SMS sent to student registered phone via gateway on payment confirmation
+- [x] Frontend: Order confirmation screen showing reference number and SMS note
+- [x] Jest unit tests written for ReferenceService
 
 ### Phase 1.9 — Walk-In Cashier Module
 - [ ] Cashier order creation endpoint (staff builds order on student behalf)

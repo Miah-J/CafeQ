@@ -12,6 +12,7 @@ import { Wallet } from './entities/wallet.entity';
 import { Order } from '../orders/entities/order.entity';
 import { UsersService } from '../users/users.service';
 import { MenusService } from '../menus/menus.service';
+import { ReferenceService } from '../orders/reference.service';
 
 export interface MpesaCallbackItem {
   Name: string;
@@ -50,6 +51,7 @@ export class PaymentsService {
     private readonly configService: ConfigService,
     private readonly usersService: UsersService,
     private readonly menusService: MenusService,
+    private readonly referenceService: ReferenceService,
   ) {}
 
   private formatPhoneNumber(phone: string): string {
@@ -387,7 +389,11 @@ export class PaymentsService {
     orderId: string,
     method: 'MPESA' | 'WALLET',
     useWallet: boolean,
-  ): Promise<{ status: 'SUCCESS' | 'PENDING'; remainder?: number }> {
+  ): Promise<{
+    status: 'SUCCESS' | 'PENDING';
+    remainder?: number;
+    referenceCode?: string;
+  }> {
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
       relations: { items: true },
@@ -426,7 +432,14 @@ export class PaymentsService {
         order.status = 'CONFIRMED';
         await this.orderRepository.save(order);
 
-        return { status: 'SUCCESS' };
+        // Generate reference and send SMS
+        const ref = await this.referenceService.generateReference(orderId);
+        void this.referenceService.sendPaymentConfirmationSms(
+          orderId,
+          ref.referenceCode,
+        );
+
+        return { status: 'SUCCESS', referenceCode: ref.referenceCode };
       } else if (balance > 0) {
         // Split Payment: Wallet covers 'balance', M-Pesa covers the remainder
         const remainder = amount - balance;
@@ -587,7 +600,14 @@ export class PaymentsService {
         order.status = 'CONFIRMED';
         await this.orderRepository.save(order);
 
-        return { status: 'SUCCESS' };
+        // Generate reference and send SMS
+        const ref = await this.referenceService.generateReference(orderId);
+        void this.referenceService.sendPaymentConfirmationSms(
+          orderId,
+          ref.referenceCode,
+        );
+
+        return { status: 'SUCCESS', referenceCode: ref.referenceCode };
       } else {
         await this.triggerStkPush(orderId, userId);
         return { status: 'PENDING' };
@@ -642,6 +662,13 @@ export class PaymentsService {
           await this.orderRepository.save(order);
           this.logger.log(
             `Payment confirmed for Order ID ${order.id}. Reference: ${payment.transactionReference}`,
+          );
+
+          // Generate reference and send SMS
+          const ref = await this.referenceService.generateReference(order.id);
+          void this.referenceService.sendPaymentConfirmationSms(
+            order.id,
+            ref.referenceCode,
           );
         }
       } else if (payment.userId) {
@@ -712,9 +739,11 @@ export class PaymentsService {
     }
   }
 
-  async getPaymentStatus(
-    orderId: string,
-  ): Promise<{ status: string; transactionReference: string | null }> {
+  async getPaymentStatus(orderId: string): Promise<{
+    status: string;
+    transactionReference: string | null;
+    referenceCode?: string | null;
+  }> {
     const payment = await this.paymentRepository.findOne({
       where: { orderId },
       order: { createdAt: 'DESC' },
@@ -726,15 +755,20 @@ export class PaymentsService {
       );
     }
 
+    const ref = await this.referenceService.getReferenceByOrderId(orderId);
+
     return {
       status: payment.status,
       transactionReference: payment.transactionReference,
+      referenceCode: ref ? ref.referenceCode : null,
     };
   }
 
-  async getPaymentStatusByPaymentId(
-    paymentId: string,
-  ): Promise<{ status: string; transactionReference: string | null }> {
+  async getPaymentStatusByPaymentId(paymentId: string): Promise<{
+    status: string;
+    transactionReference: string | null;
+    referenceCode?: string | null;
+  }> {
     const payment = await this.paymentRepository.findOne({
       where: { id: paymentId },
     });
@@ -745,9 +779,14 @@ export class PaymentsService {
       );
     }
 
+    const ref = payment.orderId
+      ? await this.referenceService.getReferenceByOrderId(payment.orderId)
+      : null;
+
     return {
       status: payment.status,
       transactionReference: payment.transactionReference,
+      referenceCode: ref ? ref.referenceCode : null,
     };
   }
 

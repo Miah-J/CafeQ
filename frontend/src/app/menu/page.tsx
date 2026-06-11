@@ -39,6 +39,7 @@ interface OrderSuccessDetail {
   id: string;
   totalAmount: number;
   status: string;
+  referenceCode?: string | null;
   items: Array<{
     id: string;
     dishId: string;
@@ -355,6 +356,7 @@ export default function MenuBrowsing() {
           id: orderId,
           status: "CONFIRMED",
           totalAmount,
+          referenceCode: data.referenceCode,
           items: [],
         });
         setCart([]);
@@ -387,6 +389,7 @@ export default function MenuBrowsing() {
                   id: orderId,
                   status: "CONFIRMED",
                   totalAmount,
+                  referenceCode: statusData.referenceCode,
                   items: [],
                 });
                 setCart([]);
@@ -542,8 +545,23 @@ export default function MenuBrowsing() {
             </div>
             <h3 className="text-xl font-bold text-white mb-2">Order Placed Successfully!</h3>
             <p className="text-xs text-zinc-400 mb-6">
-              Your order has been logged and portions reserved. Proceed to M-Pesa push payment.
+              Your order has been confirmed. Present your pickup reference code below at the cafeteria counter to collect your dishes.
             </p>
+
+            {orderSuccess.referenceCode && (
+              <div className="mt-2 mb-6 p-5 rounded-2xl border border-[#C59B27]/30 bg-gradient-to-r from-[#C59B27]/5 to-[#C59B27]/10 text-center shadow-inner">
+                <div className="text-[10px] uppercase font-bold tracking-widest text-zinc-400 mb-1">
+                  Pickup Reference Code
+                </div>
+                <div className="text-4xl font-black tracking-widest text-[#C59B27] font-mono select-all">
+                  {orderSuccess.referenceCode}
+                </div>
+                <div className="text-[10px] text-zinc-500 mt-2 font-medium">
+                  ✓ An SMS confirmation was sent to your registered phone number.
+                </div>
+              </div>
+            )}
+
             <div className="rounded-lg bg-white/5 border border-white/5 p-4 text-left space-y-3 mb-6 text-sm">
               <div className="flex justify-between border-b border-white/5 pb-2 text-xs text-zinc-400">
                 <span>Order ID:</span>
@@ -551,7 +569,7 @@ export default function MenuBrowsing() {
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2 text-xs text-zinc-400">
                 <span>Status:</span>
-                <span className="text-[#C59B27] font-semibold">{orderSuccess.status}</span>
+                <span className="text-emerald-400 font-semibold">{orderSuccess.status}</span>
               </div>
               {mpesaReceipt && (
                 <div className="flex justify-between border-b border-white/5 pb-2 text-xs text-zinc-400">

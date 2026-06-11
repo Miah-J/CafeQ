@@ -5,8 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  OneToOne,
 } from 'typeorm';
 import { OrderItem } from './order-item.entity';
+import { ReferenceNumber } from './reference-number.entity';
 
 @Entity('orders')
 export class Order {
@@ -24,6 +26,9 @@ export class Order {
 
   @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
   items: OrderItem[];
+
+  @OneToOne(() => ReferenceNumber, (ref) => ref.order)
+  referenceNumber: ReferenceNumber;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt: Date;
