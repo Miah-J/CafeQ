@@ -14,4 +14,11 @@ export default () => ({
   pgcrypto: {
     key: process.env.PGCRYPTO_KEY || 'your_long_random_pgcrypto_key_here',
   },
+  mpesa: {
+    consumerKey: process.env.MPESA_CONSUMER_KEY,
+    consumerSecret: process.env.MPESA_CONSUMER_SECRET,
+    passkey: process.env.MPESA_PASSKEY || 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72dec1144c9f3',
+    shortcode: process.env.MPESA_SHORTCODE || '174379',
+    callbackUrl: process.env.MPESA_CALLBACK_URL || 'http://localhost:3001/payments/mpesa/callback',
+  },
 });

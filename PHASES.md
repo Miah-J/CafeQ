@@ -53,18 +53,18 @@ Update each checkbox to [x] once the phase is confirmed working and merged to ma
 - [x] Jest unit tests written for OrderService
 
 ### Phase 1.6 — M-Pesa Payment
-- [ ] Daraja STK Push service implemented (Consumer Key, Secret, Passkey)
-- [ ] STK Push sent to student registered phone on checkout
-- [ ] Callback handler endpoint registered and processing confirmations
-- [ ] Exponential backoff retry logic (x3 retries, 30s timeout per attempt)
-- [ ] Payment failure notification returned to student if all retries fail
-- [ ] Order status updated to PAID on confirmed callback
-- [ ] Payment record written to payments table (reference + status only, no credentials)
-- [ ] Sandbox testing confirmed against Safaricom Daraja sandbox
-- [ ] Frontend: M-Pesa pending screen (spinner, PIN instruction, Cancel option)
-- [ ] Frontend: Handles timeout and failure states gracefully
-- [ ] Postman tests passing for payment endpoints
-- [ ] Jest unit tests written for PaymentService
+- [x] Daraja STK Push service implemented (Consumer Key, Secret, Passkey)
+- [x] STK Push sent to student registered phone on checkout
+- [x] Callback handler endpoint registered and processing confirmations
+- [x] Exponential backoff retry logic (x3 retries, 30s timeout per attempt)
+- [x] Payment failure notification returned to student if all retries fail
+- [x] Order status updated to PAID on confirmed callback
+- [x] Payment record written to payments table (reference + status only, no credentials)
+- [x] Sandbox testing confirmed against Safaricom Daraja sandbox
+- [x] Frontend: M-Pesa pending screen (spinner, PIN instruction, Cancel option)
+- [x] Frontend: Handles timeout and failure states gracefully
+- [x] Postman tests passing for payment endpoints
+- [x] Jest unit tests written for PaymentService
 
 ### Phase 1.7 — Bank Card & Wallet Payment
 - [ ] Payment gateway integration for bank card (secondary option)

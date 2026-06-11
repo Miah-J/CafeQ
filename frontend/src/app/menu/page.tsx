@@ -64,6 +64,12 @@ export default function MenuBrowsing() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<OrderSuccessDetail | null>(null);
 
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<"IDLE" | "PENDING" | "SUCCESS" | "FAILED" | "TIMEOUT">("IDLE");
+  const [paymentError, setPaymentError] = useState("");
+  const [mpesaReceipt, setMpesaReceipt] = useState("");
+  const [pollIntervalId, setPollIntervalId] = useState<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
@@ -181,6 +187,87 @@ export default function MenuBrowsing() {
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  const cancelPaymentVerification = () => {
+    if (pollIntervalId) {
+      clearInterval(pollIntervalId);
+      setPollIntervalId(null);
+    }
+    setPaymentStatus("IDLE");
+    setPendingOrderId(null);
+  };
+
+  const triggerMpesaPush = async (orderId: string, amount: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setPaymentStatus("PENDING");
+    setPaymentError("");
+    setPendingOrderId(orderId);
+
+    try {
+      const res = await fetch("http://localhost:3001/payments/stk-push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ orderId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to trigger M-Pesa push");
+      }
+
+      // Start status polling
+      let pollAttempts = 0;
+      const interval = setInterval(async () => {
+        pollAttempts++;
+        if (pollAttempts > 30) {
+          clearInterval(interval);
+          setPaymentStatus("TIMEOUT");
+          return;
+        }
+
+        try {
+          const statusRes = await fetch(`http://localhost:3001/payments/status/${orderId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const statusData = await statusRes.json();
+
+          if (statusRes.ok) {
+            if (statusData.status === "COMPLETED") {
+              clearInterval(interval);
+              setMpesaReceipt(statusData.transactionReference || "MOCK-REF");
+              setPaymentStatus("SUCCESS");
+              setOrderSuccess({
+                id: orderId,
+                status: "CONFIRMED",
+                totalAmount: amount,
+                items: [],
+              });
+              setCart([]);
+            } else if (statusData.status === "FAILED") {
+              clearInterval(interval);
+              setPaymentStatus("FAILED");
+              setPaymentError("M-Pesa payment failed or was cancelled.");
+            }
+          }
+        } catch {
+          // Ignore polling errors
+        }
+      }, 2000);
+
+      setPollIntervalId(interval);
+    } catch (err) {
+      setPaymentStatus("FAILED");
+      const errMsg = err instanceof Error ? err.message : "M-Pesa push request failed.";
+      setPaymentError(errMsg);
+    }
+  };
+
   // Checkout submission
   const handleCheckout = async () => {
     const token = localStorage.getItem("token");
@@ -211,10 +298,13 @@ export default function MenuBrowsing() {
       }
 
       // Order created successfully
-      setOrderSuccess(data);
-      setCart([]);
+      const createdOrder = data;
+      setPendingOrderId(createdOrder.id);
       setIsReviewOpen(false);
       setIsCartOpen(false);
+
+      // Trigger M-Pesa STK Push
+      void triggerMpesaPush(createdOrder.id, Number(createdOrder.totalAmount));
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Checkout failed. Portions may have changed.";
       setError(errMsg);
@@ -299,6 +389,12 @@ export default function MenuBrowsing() {
                 <span>Status:</span>
                 <span className="text-[#C59B27] font-semibold">{orderSuccess.status}</span>
               </div>
+              {mpesaReceipt && (
+                <div className="flex justify-between border-b border-white/5 pb-2 text-xs text-zinc-400">
+                  <span>M-Pesa Receipt:</span>
+                  <span className="font-mono text-emerald-400 font-semibold">{mpesaReceipt}</span>
+                </div>
+              )}
               <div className="flex justify-between pt-1 font-bold text-base">
                 <span>Total Amount:</span>
                 <span className="text-[#C59B27]">KES {orderSuccess.totalAmount.toLocaleString()}</span>
@@ -558,6 +654,109 @@ export default function MenuBrowsing() {
                 {checkoutLoading ? "Confirming Portions..." : "Confirm & Checkout"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* M-Pesa Pending Overlay Modal */}
+      {paymentStatus !== "IDLE" && paymentStatus !== "SUCCESS" && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-8 shadow-2xl text-center space-y-6 animate-fade-in">
+            {paymentStatus === "PENDING" && (
+              <>
+                <div className="relative h-20 w-20 mx-auto">
+                  <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20"></div>
+                  <div className="absolute inset-0 rounded-full border-4 border-[#C59B27] border-t-transparent animate-spin"></div>
+                  <div className="absolute inset-0 flex items-center justify-center font-bold text-[#C59B27] text-xs">
+                    M-Pesa
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-white tracking-wide">
+                  Awaiting Payment Approval
+                </h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  We&apos;ve sent an M-Pesa STK Push prompt to your registered number. Please enter your PIN on your phone to complete the transaction.
+                </p>
+                
+                <div className="rounded-lg bg-emerald-950/20 border border-emerald-500/20 p-4 text-xs text-left text-zinc-400 space-y-2">
+                  <div className="flex justify-between">
+                    <span>Target Shortcode:</span>
+                    <span className="font-semibold text-emerald-400">174379 (CafeQ)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Amount:</span>
+                    <span className="font-semibold text-[#C59B27]">KES {cartTotal.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <div className="text-xs text-zinc-500 italic animate-pulse">
+                  Verifying transaction state automatically...
+                </div>
+
+                <button
+                  onClick={cancelPaymentVerification}
+                  className="w-full rounded-lg border border-white/10 py-3 text-xs font-semibold text-zinc-400 hover:bg-white/5 hover:text-white transition"
+                >
+                  Cancel & Edit Order
+                </button>
+              </>
+            )}
+
+            {paymentStatus === "FAILED" && (
+              <>
+                <div className="h-16 w-16 rounded-full bg-red-950/30 border border-red-500/50 text-red-400 flex items-center justify-center mx-auto text-2xl font-bold">
+                  ✕
+                </div>
+                <h3 className="text-xl font-bold text-white tracking-wide">
+                  Payment Failed
+                </h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  {paymentError || "The M-Pesa transaction was cancelled or declined."}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => pendingOrderId && triggerMpesaPush(pendingOrderId, cartTotal)}
+                    className="flex-1 rounded-lg bg-[#C59B27] py-3 text-xs font-bold text-black hover:brightness-110 transition"
+                  >
+                    Retry Payment
+                  </button>
+                  <button
+                    onClick={cancelPaymentVerification}
+                    className="flex-1 rounded-lg border border-white/10 py-3 text-xs font-bold text-zinc-400 hover:bg-white/5 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+
+            {paymentStatus === "TIMEOUT" && (
+              <>
+                <div className="h-16 w-16 rounded-full bg-amber-950/30 border border-amber-500/50 text-amber-400 flex items-center justify-center mx-auto text-2xl font-bold">
+                  !
+                </div>
+                <h3 className="text-xl font-bold text-white tracking-wide">
+                  Verification Timeout
+                </h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  We&apos;ve didn&apos;t receive a payment confirmation in time. If you entered your PIN, check your order history later.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => pendingOrderId && triggerMpesaPush(pendingOrderId, cartTotal)}
+                    className="flex-1 rounded-lg bg-[#C59B27] py-3 text-xs font-bold text-black hover:brightness-110 transition"
+                  >
+                    Check / Retry
+                  </button>
+                  <button
+                    onClick={cancelPaymentVerification}
+                    className="flex-1 rounded-lg border border-white/10 py-3 text-xs font-bold text-zinc-400 hover:bg-white/5 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
