@@ -2,7 +2,7 @@ import { Injectable, ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 
-export interface DecryptedUser {
+export class DecryptedUser {
   id: string;
   email: string;
   passwordHash: string;

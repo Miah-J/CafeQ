@@ -43,14 +43,14 @@ Update each checkbox to [x] once the phase is confirmed working and merged to ma
 - [x] Frontend: Real-time portion counter updates (polling or Socket.IO)
 
 ### Phase 1.5 — Order Placement
-- [ ] Order creation endpoint (builds order_items from selected dishes)
-- [ ] Availability re-check at submission (reject if any dish sold out)
-- [ ] Running total calculated server-side
-- [ ] Order summary returned to client before payment
-- [ ] Frontend: Order builder screen with quantity steppers and running total
-- [ ] Frontend: Order summary review screen before checkout
-- [ ] Postman tests passing for order endpoints
-- [ ] Jest unit tests written for OrderService
+- [x] Order creation endpoint (builds order_items from selected dishes)
+- [x] Availability re-check at submission (reject if any dish sold out)
+- [x] Running total calculated server-side
+- [x] Order summary returned to client before payment
+- [x] Frontend: Order builder screen with quantity steppers and running total
+- [x] Frontend: Order summary review screen before checkout
+- [x] Postman tests passing for order endpoints
+- [x] Jest unit tests written for OrderService
 
 ### Phase 1.6 — M-Pesa Payment
 - [ ] Daraja STK Push service implemented (Consumer Key, Secret, Passkey)
