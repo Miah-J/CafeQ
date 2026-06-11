@@ -15,6 +15,7 @@ import { RedisService } from './redis.service';
         type: 'postgres',
         url: configService.get<string>('database.url'),
         entities: [User, Student, Administrator, Cashier],
+        autoLoadEntities: true,
         synchronize: false, // Manually loaded schema.sql
         logging: process.env.NODE_ENV !== 'production',
       }),

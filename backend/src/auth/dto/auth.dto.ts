@@ -18,9 +18,30 @@ export class RegisterStudentDto {
   @IsString()
   fullName: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  phoneNumber?: string;
+  phoneNumber: string;
+
+  @IsNotEmpty()
+  @IsString()
+  studentNumber: string;
+
+  @IsNotEmpty()
+  @IsString()
+  emailOtp: string;
+
+  @IsNotEmpty()
+  @IsString()
+  phoneOtp: string;
+}
+
+export class SendOtpDto {
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  phoneNumber: string;
 
   @IsNotEmpty()
   @IsString()

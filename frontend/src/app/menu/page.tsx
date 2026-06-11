@@ -144,13 +144,15 @@ export default function MenuBrowsing() {
         const data = await res.json();
         if (res.ok) {
           setMenu(data);
+          setError("");
         } else {
           setError(data.message || "Failed to load active menu");
+          setMenu(null);
         }
       } catch {
         setError("Unable to connect to service. Checking connection...");
+        setMenu(null);
       } finally {
-        setMenu(null); // Clear previous if loading fails, but polling will retry
         setLoading(false);
       }
     };

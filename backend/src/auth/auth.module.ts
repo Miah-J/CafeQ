@@ -6,6 +6,7 @@ import { UsersModule } from '../users/users.module';
 import { DbModule } from '../db/db.module';
 import { AuthService } from './auth.service';
 import { EmailService } from './email.service';
+import { SmsService } from './sms.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
@@ -28,7 +29,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, EmailService, JwtStrategy],
+  providers: [AuthService, EmailService, SmsService, JwtStrategy],
   exports: [AuthService, PassportModule],
 })
 export class AuthModule {}

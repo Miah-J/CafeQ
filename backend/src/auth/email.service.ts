@@ -55,4 +55,31 @@ export class EmailService implements OnModuleInit {
     this.logger.log(`[Email Mock] Email sent! Preview URL: ${previewUrl}`);
     return { previewUrl, resetLink };
   }
+
+  async sendVerificationEmail(email: string, code: string) {
+    this.logger.log(
+      `[Email Mock] Sending verification email to ${email} with code: ${code}`,
+    );
+
+    if (!this.transporter) {
+      this.logger.warn(`SMTP transporter not initialized. Code: ${code}`);
+      return { previewUrl: null };
+    }
+
+    const info = await this.transporter.sendMail({
+      from: '"CafeQ Auth" <no-reply@cafeq.com>',
+      to: email,
+      subject: 'CafeQ Email Verification Code',
+      text: `Your CafeQ verification code is: ${code} (Expires in 10 minutes)`,
+      html: `<p>Your CafeQ verification code is:</p>
+             <h2 style="font-size: 24px; letter-spacing: 2px; color: #7A1C1C;">${code}</h2>
+             <p>This code will expire in 10 minutes.</p>`,
+    });
+
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+    this.logger.log(
+      `[Email Mock] Verification email sent! Preview URL: ${previewUrl}`,
+    );
+    return { previewUrl };
+  }
 }

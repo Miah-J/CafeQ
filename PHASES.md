@@ -98,6 +98,14 @@ Update each checkbox to [x] once the phase is confirmed working and merged to ma
 - [x] All Jest tests green
 - [x] Code reviewed and merged to main via PR
 
+### Phase 1.11 — Dynamic Signup & Staff Provisioning with Verification
+- [x] Backend: SmsService integration with Africa's Talking API (sandbox/prod support)
+- [x] Backend: Email and phone verification OTP endpoints (send-otp, register validation)
+- [x] Backend: Password hashing and data encryption (Full Name, Phone) in database
+- [x] Frontend: Student Registration Page with glassmorphism UI & Ethereal preview banner
+- [x] Frontend: Admin Provisioning Dashboard restricted to Admin role
+- [x] Verify: Manual UAT for student registration and staff provisioning
+
 ---
 
 ## INCREMENT 2 — Collection and Kitchen Ops

@@ -35,6 +35,10 @@ export default function Login() {
       // Redirect based on role
       if (data.user.role === "Cashier") {
         router.push("/cashier");
+      } else if (data.user.role === "ServingStaff") {
+        router.push("/server");
+      } else if (data.user.role === "Admin") {
+        router.push("/admin");
       } else {
         router.push("/menu");
       }
@@ -101,6 +105,16 @@ export default function Login() {
             {loading ? "Authenticating..." : "Sign In"}
           </button>
         </form>
+
+        <div className="mt-6 text-center text-sm">
+          <span className="text-zinc-400">Don&apos;t have an account? </span>
+          <button
+            onClick={() => router.push("/register")}
+            className="text-[#C59B27] hover:underline font-semibold"
+          >
+            Register here
+          </button>
+        </div>
 
         <div className="mt-6 text-center text-xs text-zinc-500">
           Kenya Data Protection Act 2019 Compliant

@@ -5,6 +5,7 @@ import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { RedisService } from '../db/redis.service';
 import { EmailService } from './email.service';
+import { SmsService } from './sms.service';
 import { UnauthorizedException, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
@@ -14,12 +15,14 @@ describe('AuthService', () => {
   let jwtServiceMock: any;
   let redisServiceMock: any;
   let emailServiceMock: any;
+  let smsServiceMock: any;
   let redisClientMock: any;
 
   beforeEach(async () => {
     usersServiceMock = {
       createUser: jest.fn(),
       findByEmail: jest.fn(),
+      findStudentByNumber: jest.fn(),
       updatePassword: jest.fn(),
     };
 
@@ -41,6 +44,13 @@ describe('AuthService', () => {
       sendResetEmail: jest
         .fn()
         .mockResolvedValue({ previewUrl: 'http://ethereal/preview' }),
+      sendVerificationEmail: jest
+        .fn()
+        .mockResolvedValue({ previewUrl: 'http://ethereal/preview' }),
+    };
+
+    smsServiceMock = {
+      sendSms: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -50,6 +60,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: jwtServiceMock },
         { provide: RedisService, useValue: redisServiceMock },
         { provide: EmailService, useValue: emailServiceMock },
+        { provide: SmsService, useValue: smsServiceMock },
       ],
     }).compile();
 
@@ -60,19 +71,80 @@ describe('AuthService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('sendOtp', () => {
+    it('should send verification OTP codes and store in Redis', async () => {
+      usersServiceMock.findByEmail.mockResolvedValue(null);
+      usersServiceMock.findStudentByNumber.mockResolvedValue(null);
+
+      const result = await service.sendOtp({
+        email: 'newstudent@strathmore.edu',
+        phoneNumber: '0722222222',
+        studentNumber: 'SU-88888',
+      });
+
+      expect(redisClientMock.set).toHaveBeenCalledTimes(2);
+      expect(emailServiceMock.sendVerificationEmail).toHaveBeenCalled();
+      expect(smsServiceMock.sendSms).toHaveBeenCalled();
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject registration if student email is not Strathmore domain', async () => {
+      await expect(
+        service.sendOtp({
+          email: 'student@gmail.com',
+          phoneNumber: '0722222222',
+          studentNumber: 'SU-88888',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('registerStudent', () => {
     it('should register a student successfully', async () => {
-      usersServiceMock.createUser.mockResolvedValue({ id: 'uuid-123' });
+      redisClientMock.get
+        .mockResolvedValueOnce('123456') // email OTP
+        .mockResolvedValueOnce('654321'); // phone OTP
+
+      usersServiceMock.createUser.mockResolvedValue({
+        id: 'uuid-123',
+        email: 'student@strathmore.edu',
+        role: 'Student',
+        fullName: 'Jane Student',
+        phoneNumber: '0711111111',
+        studentNumber: 'SU-99999',
+      });
 
       const result = await service.registerStudent({
         email: 'student@strathmore.edu',
         passwordRaw: 'password123',
         fullName: 'Jane Student',
+        phoneNumber: '0711111111',
         studentNumber: 'SU-99999',
+        emailOtp: '123456',
+        phoneOtp: '654321',
       });
 
       expect(usersServiceMock.createUser).toHaveBeenCalled();
-      expect(result.id).toBe('uuid-123');
+      expect(result.accessToken).toBe('mock-jwt-token');
+      expect(result.user.role).toBe('Student');
+    });
+
+    it('should throw BadRequestException if OTP code is mismatched', async () => {
+      redisClientMock.get
+        .mockResolvedValueOnce('123456') // email OTP
+        .mockResolvedValueOnce('654321'); // phone OTP
+
+      await expect(
+        service.registerStudent({
+          email: 'student@strathmore.edu',
+          passwordRaw: 'password123',
+          fullName: 'Jane Student',
+          phoneNumber: '0711111111',
+          studentNumber: 'SU-99999',
+          emailOtp: '123456',
+          phoneOtp: 'wrong_otp',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

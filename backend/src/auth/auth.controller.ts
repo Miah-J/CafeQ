@@ -14,6 +14,7 @@ import {
   LoginDto,
   ForgotPasswordDto,
   ResetPasswordDto,
+  SendOtpDto,
 } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -24,6 +25,11 @@ import { CurrentUser } from './decorators/current-user.decorator';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Post('register/send-otp')
+  async sendOtp(@Body() dto: SendOtpDto) {
+    return this.authService.sendOtp(dto);
+  }
+
   @Post('register')
   async register(@Body() dto: RegisterStudentDto) {
     return this.authService.registerStudent({
@@ -32,6 +38,8 @@ export class AuthController {
       fullName: dto.fullName,
       phoneNumber: dto.phoneNumber,
       studentNumber: dto.studentNumber,
+      emailOtp: dto.emailOtp,
+      phoneOtp: dto.phoneOtp,
     });
   }
 

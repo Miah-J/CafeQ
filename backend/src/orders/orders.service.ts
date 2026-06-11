@@ -101,6 +101,12 @@ export class OrdersService {
 
       await queryRunner.commitTransaction();
 
+      if (savedOrder.items) {
+        savedOrder.items.forEach((item) => {
+          delete (item as Partial<OrderItem>).order;
+        });
+      }
+
       return savedOrder;
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -213,6 +219,12 @@ export class OrdersService {
       }
 
       await queryRunner.commitTransaction();
+
+      if (savedOrder.items) {
+        savedOrder.items.forEach((item) => {
+          delete (item as Partial<OrderItem>).order;
+        });
+      }
 
       // Post-commit actions for CASH: generate reference + SMS
       if (dto.paymentMethod === 'CASH') {
