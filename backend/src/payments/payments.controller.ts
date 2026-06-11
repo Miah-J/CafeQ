@@ -10,7 +10,8 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { PaymentsService, MpesaCallbackPayload } from './payments.service';
+import { PaymentsService } from './payments.service';
+import type { MpesaCallbackPayload } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { DecryptedUser } from '../users/users.service';
