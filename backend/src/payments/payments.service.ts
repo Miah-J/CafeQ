@@ -23,7 +23,7 @@ export interface MpesaCallbackMetadata {
 }
 
 export interface MpesaStkCallback {
-  MerchantRequestID: string;
+  MerchantRequestID?: string;
   CheckoutRequestID: string;
   ResultCode: number;
   ResultDesc: string;
