@@ -30,6 +30,14 @@ CREATE TABLE cashiers (
     station_number VARCHAR(50)
 );
 
+CREATE TABLE wallets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    balance DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE menus (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     publish_date DATE UNIQUE NOT NULL,
@@ -47,6 +55,7 @@ CREATE TABLE dishes (
     dietary_tags TEXT[], -- e.g. 'vegan', 'gluten-free'
     prepared_quantity INTEGER NOT NULL DEFAULT 0,
     is_sold_out BOOLEAN DEFAULT FALSE,
+    image_url VARCHAR(500), -- Path to uploaded meal image
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -76,6 +85,7 @@ CREATE INDEX idx_order_items_composite ON order_items(order_id, dish_id);
 CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- added for wallet topups
     amount DECIMAL(10, 2) NOT NULL,
     method VARCHAR(50) NOT NULL, -- MPESA, CARD, WALLET
     status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, COMPLETED, FAILED, REFUNDED

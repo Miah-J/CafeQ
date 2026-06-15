@@ -13,7 +13,8 @@ export class SmsService {
       await this.dispatchSmsViaGateway(formattedPhone, message);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Failed to send SMS to ${to}: ${errMsg}`);
+      const causeMsg = (err instanceof Error && err.cause) ? ` | Cause: ${err.cause instanceof Error ? err.cause.message : String(err.cause)}` : '';
+      this.logger.error(`Failed to send SMS to ${to}: ${errMsg}${causeMsg}`);
     }
   }
 
@@ -48,7 +49,7 @@ export class SmsService {
 
     const isSandbox = username.toLowerCase() === 'sandbox';
     const baseUrl = isSandbox
-      ? 'https://api.sandbox.africastalking.com/version1/messaging'
+      ? 'http://api.sandbox.africastalking.com/version1/messaging'
       : 'https://api.africastalking.com/version1/messaging';
 
     const bodyParams = new URLSearchParams();
@@ -57,7 +58,7 @@ export class SmsService {
     bodyParams.append('message', message);
 
     this.logger.log(
-      `Dispatching SMS to ${to} via Africa's Talking Gateway (${username})...`,
+      `Dispatching SMS to ${to} via Africa's Talking Gateway (${username}): "${message}"`,
     );
 
     const res = await fetch(baseUrl, {

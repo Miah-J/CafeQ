@@ -131,7 +131,7 @@ export class ReferenceService {
 
     const isSandbox = username.toLowerCase() === 'sandbox';
     const baseUrl = isSandbox
-      ? 'https://api.sandbox.africastalking.com/version1/messaging'
+      ? 'http://api.sandbox.africastalking.com/version1/messaging'
       : 'https://api.africastalking.com/version1/messaging';
 
     const bodyParams = new URLSearchParams();
@@ -140,7 +140,7 @@ export class ReferenceService {
     bodyParams.append('message', message);
 
     this.logger.log(
-      `Dispatching SMS to ${to} via Africa's Talking Gateway (${username})...`,
+      `Dispatching SMS to ${to} via Africa's Talking Gateway (${username}): "${message}"`,
     );
 
     const res = await fetch(baseUrl, {

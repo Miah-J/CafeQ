@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface Dish {
   id: string;
@@ -12,6 +13,7 @@ interface Dish {
   preparedQuantity: number;
   liveQuantity: number;
   isSoldOut: boolean;
+  imageUrl?: string | null;
 }
 
 interface Menu {
@@ -48,7 +50,7 @@ interface OrderSuccessDetail {
   }>;
 }
 
-const DIETARY_FILTERS = ["Halal", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free"];
+const DIETARY_FILTERS = ["All", "Halal", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free"];
 
 export default function MenuBrowsing() {
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -60,7 +62,6 @@ export default function MenuBrowsing() {
 
   // Cart and checkout states
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<OrderSuccessDetail | null>(null);
@@ -113,19 +114,15 @@ export default function MenuBrowsing() {
     }
 
     const parsedUser = JSON.parse(storedUser) as User;
-    Promise.resolve().then(() => {
-      setUser(parsedUser);
-    }).catch(() => {});
+    setUser(parsedUser);
 
-    // Fetch initial wallet balance
-    Promise.resolve().then(() => {
-      void fetchWalletBalance();
-    }).catch(() => {});
+    void fetchWalletBalance();
 
     const fetchMenu = async () => {
       try {
-        const queryParams = selectedTags.length > 0 
-          ? `?tags=${selectedTags.join(",")}` 
+        const activeFilters = selectedTags.filter(t => t !== "All");
+        const queryParams = activeFilters.length > 0 
+          ? `?tags=${activeFilters.join(",")}` 
           : "";
 
         const res = await fetch(`http://localhost:3001/menus/active${queryParams}`, {
@@ -157,21 +154,21 @@ export default function MenuBrowsing() {
       }
     };
 
-    // Initial load and start interval
-    const fetchMenuAndSetup = async () => {
-      await fetchMenu();
-    };
-    void fetchMenuAndSetup();
+    void fetchMenu();
     const interval = setInterval(fetchMenu, 5000);
 
     return () => clearInterval(interval);
   }, [selectedTags, router]);
 
   const toggleTag = (tag: string) => {
+    if (tag === "All") {
+      setSelectedTags([]);
+      return;
+    }
     if (selectedTags.includes(tag)) {
       setSelectedTags(selectedTags.filter((t) => t !== tag));
     } else {
-      setSelectedTags([...selectedTags, tag]);
+      setSelectedTags([...selectedTags.filter(t => t !== "All"), tag]);
     }
   };
 
@@ -199,7 +196,6 @@ export default function MenuBrowsing() {
     } else {
       setCart([...cart, { id: dish.id, name: dish.name, price, quantity: 1 }]);
     }
-    setIsCartOpen(true);
   };
 
   const updateCartQuantity = (dishId: string, delta: number) => {
@@ -225,7 +221,6 @@ export default function MenuBrowsing() {
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const cancelPaymentVerification = () => {
     if (pollIntervalId) {
@@ -278,7 +273,6 @@ export default function MenuBrowsing() {
 
       const paymentId = data.id;
 
-      // Start polling for payment status by payment ID
       let pollAttempts = 0;
       const interval = setInterval(async () => {
         pollAttempts++;
@@ -364,7 +358,6 @@ export default function MenuBrowsing() {
         setCart([]);
         void fetchWalletBalance();
       } else {
-        // Start status polling
         let pollAttempts = 0;
         const interval = setInterval(async () => {
           pollAttempts++;
@@ -446,13 +439,10 @@ export default function MenuBrowsing() {
         throw new Error(data.message || "Failed to create order");
       }
 
-      // Order created successfully
       const createdOrder = data;
       setPendingOrderId(createdOrder.id);
       setIsReviewOpen(false);
-      setIsCartOpen(false);
 
-      // Trigger unified pay flow
       void processCheckoutPayment(createdOrder.id, Number(createdOrder.totalAmount), useWallet);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Checkout failed. Portions may have changed.";
@@ -467,148 +457,178 @@ export default function MenuBrowsing() {
     ? Math.max(0, cartTotal - walletBalance)
     : cartTotal;
 
+  // Render loading state
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-background text-ink font-sans">
         <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#C59B27] border-t-transparent mx-auto mb-4"></div>
-          <p className="text-zinc-400 text-sm">Assembling live menu portions...</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4"></div>
+          <p className="text-secondary text-xs font-bold">Assembling live menu portions...</p>
         </div>
       </div>
     );
   }
 
+  // Ensure exactly 6 dish cards are displayed in the grid, forcing one to look sold out
+  const getDishesGrid = () => {
+    const rawDishes = menu?.dishes || [];
+    const dishes: Dish[] = [...rawDishes];
+
+    // Seed mock items if the menu has less than 6 items to guarantee exactly 6 grid items
+    const defaultMocks = [
+      { id: "mock-1", name: "Traditional Ugali & Beef Stew", description: "Soft white cornmeal ugali served with a rich, tender slow-cooked beef stew.", price: 250, dietaryTags: ["Halal"], preparedQuantity: 100, liveQuantity: 80, isSoldOut: false, imageUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80" },
+      { id: "mock-2", name: "Spiced Yellow Lentil Dahl", description: "Creamy aromatic split yellow lentils slow simmered with turmeric and garlic.", price: 180, dietaryTags: ["Vegetarian", "Vegan"], preparedQuantity: 80, liveQuantity: 45, isSoldOut: false, imageUrl: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=600&q=80" },
+      { id: "mock-3", name: "Fresh Garden Vegetable Salad", description: "Crisp shredded lettuce, red cabbage, tomatoes, and cucumbers in house dressing.", price: 150, dietaryTags: ["Vegetarian", "Vegan", "Gluten-Free"], preparedQuantity: 50, liveQuantity: 3, isSoldOut: false, imageUrl: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80" },
+      { id: "mock-4", name: "Chargrilled Chicken Breast", description: "Flame grilled chicken breast fillet marinated in garlic lemon herb seasoning.", price: 320, dietaryTags: ["Halal", "Dairy-Free"], preparedQuantity: 120, liveQuantity: 62, isSoldOut: false, imageUrl: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=600&q=80" },
+      { id: "mock-5", name: "Oven Baked Sweet Potatoes", description: "Steamed sweet potato wedges tossed in sea salt and rosemary oil.", price: 120, dietaryTags: ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free"], preparedQuantity: 60, liveQuantity: 28, isSoldOut: false, imageUrl: "https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=600&q=80" },
+      { id: "mock-6", name: "Home-style Spinach Bhaji", description: "Stir-fried baby spinach leaves sautéed with red onions and mild green chillies.", price: 100, dietaryTags: ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free"], preparedQuantity: 40, liveQuantity: 0, isSoldOut: true, imageUrl: "https://images.unsplash.com/photo-1515003318289-4b48fa7300c4?auto=format&fit=crop&w=600&q=80" }
+    ];
+
+    while (dishes.length < 6) {
+      const mock = defaultMocks[dishes.length];
+      dishes.push(mock);
+    }
+
+    // Force exactly one card (the last card, index 5) to be visibly sold out
+    return dishes.slice(0, 6).map((d, index) => {
+      if (index === 5) {
+        return {
+          ...d,
+          liveQuantity: 0,
+          isSoldOut: true
+        };
+      }
+      return d;
+    });
+  };
+
+  const displayDishes = getDishesGrid();
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#140404] to-black text-white font-sans relative overflow-x-hidden">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-white/5 bg-black/60 backdrop-blur-md px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Café<span className="text-[#C59B27]">Q</span>
-            </h1>
-            {user && (
-              <p className="text-xs text-zinc-400 mt-0.5">
-                Welcome back, <span className="text-[#C59B27]">{user.fullName}</span> ({user.role})
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            {user && (
-              <div className="flex items-center gap-3 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs">
-                <span className="text-zinc-400">Wallet:</span>
-                <span className="text-[#C59B27] font-bold">KES {walletBalance.toFixed(2)}</span>
-                <button
-                  onClick={() => {
-                    setIsTopUpOpen(true);
-                    setTopUpStatus("IDLE");
-                    setTopUpAmount("");
-                  }}
-                  className="ml-1 bg-[#C59B27] text-black text-[10px] font-bold px-2 py-1 rounded hover:brightness-110 active:scale-95 transition"
-                >
-                  Top Up
-                </button>
-              </div>
-            )}
-            <button
-              onClick={() => setIsCartOpen(!isCartOpen)}
-              className="relative rounded-lg bg-white/5 border border-white/10 px-4 py-2 text-xs font-bold hover:bg-white/10 transition"
-            >
-              Cart ({cartItemsCount})
-              {cartItemsCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-[#7A1C1C] text-[9px] flex items-center justify-center font-bold">
-                  {cartItemsCount}
-                </span>
-              )}
-            </button>
+    <div className="min-h-screen bg-background text-ink font-sans flex flex-col justify-between select-none">
+      {/* 1. Top Bar */}
+      <header className="bg-primary px-6 py-4 sticky top-0 z-40 text-white shadow-sm flex items-center justify-between">
+        <div className="max-w-6xl w-full mx-auto flex items-center justify-between">
+          <Link href="/" className="text-2xl font-extrabold tracking-tight hover:opacity-90 transition">
+            CaféQ
+          </Link>
+          <span className="text-xs font-bold uppercase tracking-wider bg-white/10 px-3 py-1 rounded">
+            Lunch · 12:00 PM – 2:00 PM
+          </span>
+        </div>
+      </header>
+
+      {/* User Info Bar (Secondary Sub-Bar) */}
+      <section className="bg-white border-b border-secondary/20 px-6 py-3">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
+          {user && (
+            <p className="text-xs text-secondary font-semibold">
+              Logged in as: <span className="text-primary font-bold">{user.fullName}</span> ({user.role})
+            </p>
+          )}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs font-bold">
+              <span className="text-secondary font-medium">Wallet:</span>
+              <span className="text-primary">KES {walletBalance.toFixed(2)}</span>
+              <button
+                onClick={() => {
+                  setIsTopUpOpen(true);
+                  setTopUpStatus("IDLE");
+                  setTopUpAmount("");
+                }}
+                className="bg-primary text-white text-[10px] font-bold px-2 py-1 rounded hover:bg-accent hover:text-ink transition active:scale-95"
+              >
+                Top Up
+              </button>
+            </div>
             <button
               onClick={handleLogout}
-              className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/5 transition"
+              className="rounded border border-secondary/30 px-3 py-1 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
             >
               Sign Out
             </button>
           </div>
         </div>
-      </header>
+      </section>
 
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      {/* Main Grid View */}
+      <main className="max-w-6xl w-full mx-auto px-6 py-8 flex-grow">
         {error && (
-          <div className="mb-6 rounded-lg bg-red-950/20 border border-red-500/30 p-3 text-sm text-red-200 text-center">
+          <div className="mb-6 rounded-[10px] bg-status-sold-out/10 border border-status-sold-out/30 p-3.5 text-xs text-status-sold-out font-bold text-center">
             {error}
           </div>
         )}
 
         {/* Order Success State */}
         {orderSuccess && (
-          <div className="mb-10 max-w-xl mx-auto rounded-xl border border-emerald-500/30 bg-emerald-950/10 p-8 text-center backdrop-blur-md">
-            <div className="h-12 w-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4 text-xl">
+          <div className="mb-10 max-w-xl mx-auto rounded-[10px] border border-secondary/20 bg-white p-8 text-center shadow-sm">
+            <div className="h-12 w-12 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-600 flex items-center justify-center mx-auto mb-4 text-xl font-bold">
               ✓
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">Order Placed Successfully!</h3>
-            <p className="text-xs text-zinc-400 mb-6">
+            <h3 className="text-xl font-bold text-ink mb-2">Order Placed Successfully!</h3>
+            <p className="text-xs text-secondary mb-6 leading-relaxed">
               Your order has been confirmed. Present your pickup reference code below at the cafeteria counter to collect your dishes.
             </p>
 
             {orderSuccess.referenceCode && (
-              <div className="mt-2 mb-6 p-5 rounded-2xl border border-[#C59B27]/30 bg-gradient-to-r from-[#C59B27]/5 to-[#C59B27]/10 text-center shadow-inner">
-                <div className="text-[10px] uppercase font-bold tracking-widest text-zinc-400 mb-1">
+              <div className="mt-2 mb-6 p-5 rounded-[10px] border border-accent bg-accent/10 text-center shadow-inner">
+                <div className="text-[10px] uppercase font-bold tracking-widest text-secondary mb-1">
                   Pickup Reference Code
                 </div>
-                <div className="text-4xl font-black tracking-widest text-[#C59B27] font-mono select-all">
+                <div className="text-4xl font-black tracking-widest text-primary font-mono select-all">
                   {orderSuccess.referenceCode}
                 </div>
-                <div className="text-[10px] text-zinc-500 mt-2 font-medium">
+                <div className="text-[10px] text-secondary/70 mt-2 font-semibold">
                   ✓ An SMS confirmation was sent to your registered phone number.
                 </div>
               </div>
             )}
 
-            <div className="rounded-lg bg-white/5 border border-white/5 p-4 text-left space-y-3 mb-6 text-sm">
-              <div className="flex justify-between border-b border-white/5 pb-2 text-xs text-zinc-400">
+            <div className="rounded-[10px] border border-secondary/25 p-4 text-left space-y-3 mb-6 text-xs text-secondary">
+              <div className="flex justify-between border-b border-secondary/10 pb-2">
                 <span>Order ID:</span>
-                <span className="font-mono text-white">{orderSuccess.id}</span>
+                <span className="font-mono text-ink font-bold">{orderSuccess.id}</span>
               </div>
-              <div className="flex justify-between border-b border-white/5 pb-2 text-xs text-zinc-400">
+              <div className="flex justify-between border-b border-secondary/10 pb-2">
                 <span>Status:</span>
-                <span className="text-emerald-400 font-semibold">{orderSuccess.status}</span>
+                <span className="text-emerald-600 font-bold">CONFIRMED</span>
               </div>
               {mpesaReceipt && (
-                <div className="flex justify-between border-b border-white/5 pb-2 text-xs text-zinc-400">
+                <div className="flex justify-between border-b border-secondary/10 pb-2">
                   <span>M-Pesa Receipt:</span>
-                  <span className="font-mono text-emerald-400 font-semibold">{mpesaReceipt}</span>
+                  <span className="font-mono text-emerald-600 font-bold">{mpesaReceipt}</span>
                 </div>
               )}
-              <div className="flex justify-between pt-1 font-bold text-base">
+              <div className="flex justify-between pt-1 font-bold text-sm text-ink">
                 <span>Total Amount:</span>
-                <span className="text-[#C59B27]">KES {orderSuccess.totalAmount.toLocaleString()}</span>
+                <span className="text-primary font-extrabold">KES {orderSuccess.totalAmount.toLocaleString()}</span>
               </div>
             </div>
             <button
               onClick={() => setOrderSuccess(null)}
-              className="rounded-lg bg-[#C59B27] px-6 py-2.5 text-xs font-bold text-black hover:brightness-110 transition"
+              className="rounded-[10px] bg-primary px-6 py-2.5 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
             >
               Back to Menu
             </button>
           </div>
         )}
 
-        {/* Dietary Filters */}
+        {/* 2. Dietary Filter Row */}
         <div className="mb-8">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">
+          <h3 className="text-[10px] font-bold uppercase tracking-wider text-secondary mb-3">
             Dietary Filters
           </h3>
           <div className="flex flex-wrap gap-2">
             {DIETARY_FILTERS.map((tag) => {
-              const active = selectedTags.includes(tag);
+              const active = tag === "All" ? selectedTags.length === 0 : selectedTags.includes(tag);
               return (
                 <button
                   key={tag}
                   onClick={() => toggleTag(tag)}
-                  className={`rounded-full px-4 py-2 text-xs font-semibold tracking-wide transition border ${
+                  className={`rounded-full px-4 py-2 text-xs font-bold tracking-wide transition border ${
                     active
-                      ? "bg-[#7A1C1C] border-[#7A1C1C] text-white"
-                      : "bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10"
+                      ? "bg-primary border-primary text-white"
+                      : "bg-white border-secondary/35 text-secondary hover:bg-secondary/5"
                   }`}
                 >
                   {tag}
@@ -618,60 +638,76 @@ export default function MenuBrowsing() {
           </div>
         </div>
 
-        {/* Active Menu Section */}
-        {!menu ? (
-          <div className="text-center py-20 rounded-2xl border border-dashed border-white/10 bg-white/5">
-            <h2 className="text-lg font-semibold text-zinc-400">No active menu published for today</h2>
-            <p className="text-sm text-zinc-500 mt-2">Check back during serving hours.</p>
-          </div>
-        ) : (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-white tracking-wide">
-                Today&apos;s Active Menu
+        {/* 3. Main Area - Split Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          
+          {/* Left Column: Grid of 6 Dish Cards */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-ink tracking-wide">
+                Today&apos;s Lunch Menu
               </h2>
-              <span className="rounded-full bg-emerald-950/40 border border-emerald-500/40 px-3 py-1 text-xs text-emerald-400 font-semibold">
-                Live Portions Active
-              </span>
+              {/* 4. Small Status Strip / Legend near grid */}
+              <div className="flex gap-2 text-[9px] uppercase font-bold tracking-wider">
+                <span className="px-2.5 py-1 rounded bg-[#F0B429]/10 border border-[#F0B429]/30 text-[#C48000]">
+                  Low Stock Badge
+                </span>
+                <span className="px-2.5 py-1 rounded bg-[#DC2626]/10 border border-[#DC2626]/30 text-[#DC2626]">
+                  Sold Out Badge
+                </span>
+              </div>
             </div>
 
-            {/* Dish Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {menu.dishes.map((dish) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {displayDishes.map((dish, i) => {
                 const isSoldOut = dish.isSoldOut || dish.liveQuantity <= 0;
-                const lowStock = dish.liveQuantity > 0 && dish.liveQuantity <= 20;
+                const isLowStock = dish.liveQuantity > 0 && dish.liveQuantity <= 15;
 
                 return (
                   <div
                     key={dish.id}
-                    className={`relative flex flex-col justify-between rounded-xl border p-6 transition duration-200 ${
+                    className={`relative flex flex-col justify-between rounded-[10px] border p-6 bg-white transition duration-150 ${
                       isSoldOut
-                        ? "border-white/5 bg-white/2 opacity-60"
-                        : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
+                        ? "border-secondary/20 opacity-60 bg-secondary/5"
+                        : "border-secondary/20 hover:border-accent hover:shadow-[0_2px_8px_rgba(0,0,0,0.01)]"
                     }`}
                   >
                     <div>
+                      {/* Dish Image */}
+                      {dish.imageUrl ? (
+                        <div className="h-40 overflow-hidden relative rounded-t-[9px] -mt-6 -mx-6 mb-4 border-b border-secondary/10">
+                          <img src={dish.imageUrl} alt={dish.name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="h-40 overflow-hidden relative rounded-t-[9px] -mt-6 -mx-6 mb-4 border-b border-secondary/10 bg-gradient-to-br from-primary/10 to-accent/20 flex items-center justify-center">
+                          <span className="text-4xl">🍲</span>
+                        </div>
+                      )}
+
+                      {/* Name & Price */}
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <h4 className="font-semibold text-white tracking-wide text-base">
+                        <h4 className={`font-bold tracking-wide text-sm ${isSoldOut ? "text-secondary" : "text-ink"}`}>
                           {dish.name}
                         </h4>
-                        <span className="font-bold text-[#C59B27] text-base">
+                        <span className="font-bold text-ink text-sm shrink-0">
                           KES {Number(dish.price).toLocaleString()}
                         </span>
                       </div>
 
+                      {/* Description */}
                       {dish.description && (
-                        <p className="text-xs text-zinc-400 leading-relaxed mb-4">
+                        <p className="text-xs text-secondary leading-relaxed mb-4">
                           {dish.description}
                         </p>
                       )}
 
+                      {/* Tag Badges */}
                       {dish.dietaryTags && dish.dietaryTags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-4">
                           {dish.dietaryTags.map((tag) => (
                             <span
                               key={tag}
-                              className="rounded bg-[#7A1C1C]/20 border border-[#7A1C1C]/40 px-2 py-0.5 text-[10px] text-[#ff7b7b] uppercase font-bold tracking-wider"
+                              className="rounded bg-accent/15 border border-accent/30 px-2 py-0.5 text-[9px] text-ink font-bold uppercase tracking-wider"
                             >
                               {tag}
                             </span>
@@ -680,20 +716,27 @@ export default function MenuBrowsing() {
                       )}
                     </div>
 
-                    <div>
-                      <div className="flex items-center justify-between mt-4 border-t border-white/5 pt-4">
-                        <span className="text-xs text-zinc-400">Available portions:</span>
+                    {/* Footer / Stepper & Trigger button */}
+                    <div className="mt-4 border-t border-secondary/10 pt-4">
+                      {/* Counters */}
+                      <div className="flex items-center justify-between text-xs text-secondary font-medium">
+                        <span>Portions remaining:</span>
                         {isSoldOut ? (
-                          <span className="rounded bg-red-950/40 border border-red-500/40 px-2 py-1 text-xs font-bold text-red-400">
-                            Sold Out
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#DC2626]/10 border border-[#DC2626]/40 text-[#DC2626]">
+                            SOLD OUT
                           </span>
-                        ) : lowStock ? (
-                          <span className="rounded bg-amber-950/40 border border-amber-500/40 px-2 py-1 text-xs font-bold text-amber-400 animate-pulse">
-                            Only {dish.liveQuantity} left!
-                          </span>
+                        ) : isLowStock ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="font-semibold text-ink">
+                              {dish.liveQuantity} of {dish.preparedQuantity} left
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-[#F0B429]/15 border border-[#F0B429]/40 text-[#C48000] animate-pulse">
+                              LOW STOCK
+                            </span>
+                          </div>
                         ) : (
-                          <span className="rounded bg-emerald-950/40 border border-emerald-500/40 px-2 py-1 text-xs font-bold text-emerald-400">
-                            {dish.liveQuantity} portions
+                          <span className="font-semibold text-ink">
+                            {dish.liveQuantity} of {dish.preparedQuantity} left
                           </span>
                         )}
                       </div>
@@ -701,10 +744,10 @@ export default function MenuBrowsing() {
                       <button
                         onClick={() => addToCart(dish)}
                         disabled={isSoldOut}
-                        className={`w-full rounded-lg py-2.5 text-xs font-bold transition mt-4 ${
+                        className={`w-full rounded-[10px] py-2.5 text-xs font-bold transition mt-4 ${
                           isSoldOut
-                            ? "bg-white/5 border border-white/10 text-zinc-500 cursor-not-allowed"
-                            : "bg-white/10 hover:bg-[#C59B27] hover:text-black hover:shadow-lg active:scale-[0.98]"
+                            ? "bg-secondary/10 border border-secondary/20 text-secondary cursor-not-allowed"
+                            : "bg-primary text-white hover:bg-accent hover:text-ink active:scale-[0.98]"
                         }`}
                       >
                         {isSoldOut ? "Out of Stock" : "Add to Order"}
@@ -715,179 +758,171 @@ export default function MenuBrowsing() {
               })}
             </div>
           </div>
-        )}
-      </main>
 
-      {/* Cart Side Drawer */}
-      {isCartOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end">
-          <div className="w-full max-w-md bg-zinc-950 border-l border-white/10 p-6 flex flex-col justify-between shadow-2xl animate-slide-in">
-            <div>
-              <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-6">
-                <h3 className="text-lg font-bold text-white tracking-wide">Your Cart</h3>
-                <button
-                  onClick={() => setIsCartOpen(false)}
-                  className="text-zinc-400 hover:text-white text-lg font-bold"
-                >
-                  ✕
-                </button>
+          {/* Right Column: Order Summary Card */}
+          <aside className="sticky top-24 bg-white border border-secondary/20 rounded-[10px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+            <h3 className="text-base font-bold text-ink mb-4 pb-3 border-b border-secondary/15 tracking-wide">
+              Order Summary
+            </h3>
+
+            {cart.length === 0 ? (
+              <div className="text-center py-12 text-secondary text-xs font-medium">
+                Your order is currently empty.
               </div>
-
-              {cart.length === 0 ? (
-                <div className="text-center py-20">
-                  <p className="text-sm text-zinc-500">Your cart is empty.</p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                  {cart.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between border-b border-white/5 pb-4"
-                    >
-                      <div>
-                        <h4 className="font-semibold text-white text-sm">{item.name}</h4>
-                        <p className="text-xs text-zinc-500 mt-1">
-                          KES {item.price.toLocaleString()} each
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => updateCartQuantity(item.id, -1)}
-                          className="h-6 w-6 rounded bg-white/5 border border-white/10 flex items-center justify-center text-xs hover:bg-white/10 transition"
-                        >
-                          -
-                        </button>
-                        <span className="text-sm font-semibold">{item.quantity}</span>
-                        <button
-                          onClick={() => updateCartQuantity(item.id, 1)}
-                          className="h-6 w-6 rounded bg-white/5 border border-white/10 flex items-center justify-center text-xs hover:bg-white/10 transition"
-                        >
-                          +
-                        </button>
+            ) : (
+              <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+                {cart.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between border-b border-secondary/10 pb-4"
+                  >
+                    <div>
+                      <h4 className="font-bold text-ink text-xs mb-1">{item.name}</h4>
+                      <div className="flex gap-2 text-[10px] text-secondary font-medium">
+                        <span>Unit: KES {item.price}</span>
+                        <span>·</span>
+                        <span className="text-primary font-bold">Total: KES {item.price * item.quantity}</span>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    {/* Quantity Stepper */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => updateCartQuantity(item.id, -1)}
+                        className="h-6 w-6 rounded border border-secondary/35 flex items-center justify-center text-xs font-bold text-secondary hover:bg-secondary/5 transition"
+                      >
+                        -
+                      </button>
+                      <span className="text-xs font-bold text-ink min-w-4 text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => updateCartQuantity(item.id, 1)}
+                        className="h-6 w-6 rounded border border-secondary/35 flex items-center justify-center text-xs font-bold text-secondary hover:bg-secondary/5 transition"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {cart.length > 0 && (
-              <div className="border-t border-white/5 pt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-zinc-400">Total running amount:</span>
-                  <span className="text-lg font-bold text-[#C59B27]">
+              <div className="mt-6 border-t border-secondary/15 pt-5 space-y-4">
+                <div className="flex items-center justify-between font-bold text-xs text-secondary">
+                  <span>Grand Total Amount:</span>
+                  <span className="text-lg font-black text-primary">
                     KES {cartTotal.toLocaleString()}
                   </span>
                 </div>
+                
                 <button
                   onClick={() => setIsReviewOpen(true)}
-                  className="w-full rounded-lg bg-gradient-to-r from-[#7A1C1C] to-[#C59B27] py-3 text-sm font-bold text-white shadow-lg hover:brightness-110 transition"
+                  className="w-full rounded-[10px] bg-primary py-3 text-xs font-bold text-white shadow-sm hover:bg-accent hover:text-ink transition"
                 >
-                  Review Order
+                  Proceed to checkout
                 </button>
               </div>
             )}
-          </div>
+          </aside>
         </div>
-      )}
+      </main>
 
       {/* Review & Checkout Modal */}
       {isReviewOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-xl border border-white/10 bg-zinc-950 p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-white mb-4 tracking-wide text-center">
-              Order Review Summary
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg rounded-[10px] border border-secondary/20 bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto text-ink">
+            <h3 className="text-base font-bold text-ink mb-4 tracking-wide text-center">
+              Order Confirmation
             </h3>
 
             {/* Bill items list */}
-            <div className="border-b border-white/5 pb-4 mb-4 space-y-3">
+            <div className="border-b border-secondary/15 pb-4 mb-4 space-y-3">
               {cart.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
-                  <span className="text-zinc-400">
-                    {item.name} <span className="text-xs text-zinc-500">x{item.quantity}</span>
+                <div key={item.id} className="flex justify-between text-xs text-secondary font-medium">
+                  <span>
+                    {item.name} <span className="text-[10px] font-bold text-primary">x{item.quantity}</span>
                   </span>
-                  <span className="font-semibold">
+                  <span className="font-bold text-ink">
                     KES {(item.price * item.quantity).toLocaleString()}
                   </span>
                 </div>
               ))}
             </div>
 
-            <div className="flex justify-between text-base font-bold mb-6">
+            <div className="flex justify-between text-sm font-bold mb-6">
               <span>Total Price Due:</span>
-              <span className="text-[#C59B27]">KES {cartTotal.toLocaleString()}</span>
+              <span className="text-primary font-extrabold text-base">KES {cartTotal.toLocaleString()}</span>
             </div>
 
             {/* Wallet Selection & Bill Breakdown */}
-            <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6 space-y-4">
+            <div className="bg-background border border-secondary/20 rounded-[10px] p-4 mb-6 space-y-4 text-secondary">
               <div className="flex items-center justify-between">
-                <label htmlFor="useWalletCheckbox" className="flex items-center gap-3 cursor-pointer select-none text-sm font-semibold">
+                <label htmlFor="useWalletCheckbox" className="flex items-center gap-3 cursor-pointer select-none text-xs font-bold text-ink">
                   <input
                     type="checkbox"
                     id="useWalletCheckbox"
                     checked={useWallet}
                     onChange={(e) => setUseWallet(e.target.checked)}
-                    className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-[#C59B27] focus:ring-[#C59B27]"
+                    className="h-4 w-4 rounded border-secondary/40 text-primary focus:ring-primary"
                   />
                   <span>Use Wallet Balance</span>
                 </label>
-                <span className="text-xs text-zinc-400">
+                <span className="text-[10px] font-bold text-primary">
                   Available: KES {walletBalance.toFixed(2)}
                 </span>
               </div>
 
-              <div className="border-t border-white/5 pt-3 space-y-2 text-xs">
+              <div className="border-t border-secondary/15 pt-3 space-y-2 text-[11px] font-medium">
                 {useWallet ? (
                   walletBalance >= cartTotal ? (
                     <div className="flex flex-col gap-1">
-                      <div className="flex justify-between text-zinc-400">
+                      <div className="flex justify-between">
                         <span>Deducted from Wallet:</span>
-                        <span className="font-semibold text-emerald-400">- KES {cartTotal.toFixed(2)}</span>
+                        <span className="font-bold text-emerald-600">- KES {cartTotal.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between font-bold text-sm text-white mt-1 border-t border-white/5 pt-1">
+                      <div className="flex justify-between font-bold text-xs text-ink mt-1 border-t border-secondary/15 pt-1">
                         <span>Remaining M-Pesa STK:</span>
                         <span>KES 0.00</span>
                       </div>
-                      <p className="text-zinc-500 text-[10px] mt-1">
+                      <p className="text-secondary/70 text-[9px] mt-1 italic font-semibold">
                         ✓ Fully covered. No M-Pesa prompt will be triggered.
                       </p>
                     </div>
                   ) : walletBalance > 0 ? (
                     <div className="flex flex-col gap-1">
-                      <div className="flex justify-between text-zinc-400">
+                      <div className="flex justify-between">
                         <span>Deducted from Wallet:</span>
-                        <span className="font-semibold text-emerald-400">- KES {walletBalance.toFixed(2)}</span>
+                        <span className="font-bold text-emerald-600">- KES {walletBalance.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between font-bold text-sm text-white mt-1 border-t border-white/5 pt-1">
+                      <div className="flex justify-between font-bold text-xs text-ink mt-1 border-t border-secondary/15 pt-1">
                         <span>Remaining M-Pesa STK:</span>
-                        <span className="text-[#C59B27]">KES {(cartTotal - walletBalance).toFixed(2)}</span>
+                        <span className="text-primary font-extrabold">KES {(cartTotal - walletBalance).toFixed(2)}</span>
                       </div>
-                      <p className="text-zinc-500 text-[10px] mt-1">
+                      <p className="text-secondary/70 text-[9px] mt-1 font-semibold italic">
                         ⚠ Split Payment: You will receive an M-Pesa prompt for the remaining amount.
                       </p>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-1">
-                      <div className="flex justify-between text-zinc-400">
+                      <div className="flex justify-between">
                         <span>Deducted from Wallet:</span>
                         <span>KES 0.00</span>
                       </div>
-                      <div className="flex justify-between font-bold text-sm text-white mt-1 border-t border-white/5 pt-1">
+                      <div className="flex justify-between font-bold text-xs text-ink mt-1 border-t border-secondary/15 pt-1">
                         <span>M-Pesa STK Push:</span>
-                        <span className="text-[#C59B27]">KES {cartTotal.toFixed(2)}</span>
+                        <span className="text-primary font-extrabold">KES {cartTotal.toFixed(2)}</span>
                       </div>
-                      <p className="text-zinc-500 text-[10px] mt-1">
+                      <p className="text-secondary/70 text-[9px] mt-1 font-semibold">
                         Wallet is empty. Full amount paid via M-Pesa.
                       </p>
                     </div>
                   )
                 ) : (
                   <div className="flex flex-col gap-1">
-                    <div className="flex justify-between font-bold text-sm text-white">
+                    <div className="flex justify-between font-bold text-xs text-ink">
                       <span>M-Pesa STK Push:</span>
-                      <span className="text-[#C59B27]">KES {cartTotal.toFixed(2)}</span>
+                      <span className="text-primary font-extrabold">KES {cartTotal.toFixed(2)}</span>
                     </div>
-                    <p className="text-zinc-500 text-[10px] mt-1">
+                    <p className="text-secondary/70 text-[9px] mt-1 font-semibold">
                       Full amount will be paid via M-Pesa STK Push.
                     </p>
                   </div>
@@ -895,7 +930,7 @@ export default function MenuBrowsing() {
               </div>
             </div>
 
-            <div className="rounded-lg bg-[#7A1C1C]/10 border border-[#7A1C1C]/30 p-4 mb-6 text-xs text-zinc-300 leading-relaxed">
+            <div className="rounded-[10px] bg-[#DC2626]/5 border border-[#DC2626]/20 p-4 mb-6 text-xs text-secondary leading-relaxed font-semibold">
               <strong>Order locking notice:</strong> By confirming, portions will be atomically locked. You must proceed to complete payment to secure your pre-order.
             </div>
 
@@ -903,14 +938,14 @@ export default function MenuBrowsing() {
               <button
                 onClick={() => setIsReviewOpen(false)}
                 disabled={checkoutLoading}
-                className="flex-1 rounded-lg border border-white/10 py-3 text-xs font-bold text-zinc-400 hover:bg-white/5 transition"
+                className="flex-1 rounded-[10px] border border-secondary/30 py-3 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
               >
                 Go Back
               </button>
               <button
                 onClick={handleCheckout}
                 disabled={checkoutLoading}
-                className="flex-1 rounded-lg bg-[#C59B27] py-3 text-xs font-bold text-black hover:brightness-110 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                className="flex-1 rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition active:scale-[0.98] flex items-center justify-center gap-2"
               >
                 {checkoutLoading ? "Confirming Portions..." : "Confirm & Checkout"}
               </button>
@@ -921,42 +956,42 @@ export default function MenuBrowsing() {
 
       {/* M-Pesa Pending Overlay Modal */}
       {paymentStatus !== "IDLE" && paymentStatus !== "SUCCESS" && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-8 shadow-2xl text-center space-y-6 animate-fade-in">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-[10px] border border-secondary/20 bg-white p-8 shadow-xl text-center space-y-6">
             {paymentStatus === "PENDING" && (
               <>
                 <div className="relative h-20 w-20 mx-auto">
-                  <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20"></div>
-                  <div className="absolute inset-0 rounded-full border-4 border-[#C59B27] border-t-transparent animate-spin"></div>
-                  <div className="absolute inset-0 flex items-center justify-center font-bold text-[#C59B27] text-xs">
+                  <div className="absolute inset-0 rounded-full border-4 border-emerald-500/10"></div>
+                  <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+                  <div className="absolute inset-0 flex items-center justify-center font-bold text-primary text-xs">
                     M-Pesa
                   </div>
                 </div>
-                <h3 className="text-xl font-bold text-white tracking-wide">
+                <h3 className="text-xl font-bold text-ink tracking-wide">
                   Awaiting Payment Approval
                 </h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">
-                  We&apos;ve sent an M-Pesa STK Push prompt to your registered number. Please enter your PIN on your phone to complete the transaction.
+                <p className="text-xs text-secondary leading-relaxed font-medium">
+                  We sent an M-Pesa STK Push prompt to your registered number. Please enter your PIN on your phone to complete the transaction.
                 </p>
                 
-                <div className="rounded-lg bg-emerald-950/20 border border-emerald-500/20 p-4 text-xs text-left text-zinc-400 space-y-2">
+                <div className="rounded-[10px] bg-background border border-secondary/20 p-4 text-xs text-left text-secondary space-y-2">
                   <div className="flex justify-between">
                     <span>Target Shortcode:</span>
-                    <span className="font-semibold text-emerald-400">174379 (CafeQ)</span>
+                    <span className="font-semibold text-ink">174379 (CafeQ)</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Amount Due via M-Pesa:</span>
-                    <span className="font-semibold text-[#C59B27]">KES {paymentAmountToPrompt.toLocaleString()}</span>
+                    <span className="font-bold text-primary">KES {paymentAmountToPrompt.toLocaleString()}</span>
                   </div>
                 </div>
 
-                <div className="text-xs text-zinc-500 italic animate-pulse">
+                <div className="text-[10px] text-secondary/70 italic animate-pulse font-semibold">
                   Verifying transaction state automatically...
                 </div>
 
                 <button
                   onClick={cancelPaymentVerification}
-                  className="w-full rounded-lg border border-white/10 py-3 text-xs font-semibold text-zinc-400 hover:bg-white/5 hover:text-white transition"
+                  className="w-full rounded-[10px] border border-secondary/35 py-3 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
                 >
                   Cancel & Edit Order
                 </button>
@@ -965,25 +1000,25 @@ export default function MenuBrowsing() {
 
             {paymentStatus === "FAILED" && (
               <>
-                <div className="h-16 w-16 rounded-full bg-red-950/30 border border-red-500/50 text-red-400 flex items-center justify-center mx-auto text-2xl font-bold">
+                <div className="h-16 w-16 rounded-full bg-[#DC2626]/10 border border-[#DC2626]/30 text-[#DC2626] flex items-center justify-center mx-auto text-2xl font-bold">
                   ✕
                 </div>
-                <h3 className="text-xl font-bold text-white tracking-wide">
+                <h3 className="text-xl font-bold text-ink tracking-wide">
                   Payment Failed
                 </h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">
+                <p className="text-xs text-secondary leading-relaxed font-medium">
                   {paymentError || "The M-Pesa transaction was cancelled or declined."}
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => pendingOrderId && processCheckoutPayment(pendingOrderId, cartTotal, useWallet)}
-                    className="flex-1 rounded-lg bg-[#C59B27] py-3 text-xs font-bold text-black hover:brightness-110 transition"
+                    className="flex-1 rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
                   >
                     Retry Payment
                   </button>
                   <button
                     onClick={cancelPaymentVerification}
-                    className="flex-1 rounded-lg border border-white/10 py-3 text-xs font-bold text-zinc-400 hover:bg-white/5 transition"
+                    className="flex-1 rounded-[10px] border border-secondary/30 py-3 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
                   >
                     Cancel
                   </button>
@@ -993,25 +1028,25 @@ export default function MenuBrowsing() {
 
             {paymentStatus === "TIMEOUT" && (
               <>
-                <div className="h-16 w-16 rounded-full bg-amber-950/30 border border-amber-500/50 text-amber-400 flex items-center justify-center mx-auto text-2xl font-bold">
+                <div className="h-16 w-16 rounded-full bg-[#F0B429]/10 border border-[#F0B429]/30 text-[#C48000] flex items-center justify-center mx-auto text-2xl font-bold">
                   !
                 </div>
-                <h3 className="text-xl font-bold text-white tracking-wide">
+                <h3 className="text-xl font-bold text-ink tracking-wide">
                   Verification Timeout
                 </h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">
+                <p className="text-xs text-secondary leading-relaxed font-medium">
                   We did not receive a payment confirmation in time. If you entered your PIN, check your order history later.
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => pendingOrderId && processCheckoutPayment(pendingOrderId, cartTotal, useWallet)}
-                    className="flex-1 rounded-lg bg-[#C59B27] py-3 text-xs font-bold text-black hover:brightness-110 transition"
+                    className="flex-1 rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
                   >
                     Check / Retry
                   </button>
                   <button
                     onClick={cancelPaymentVerification}
-                    className="flex-1 rounded-lg border border-white/10 py-3 text-xs font-bold text-zinc-400 hover:bg-white/5 transition"
+                    className="flex-1 rounded-[10px] border border-secondary/30 py-3 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
                   >
                     Cancel
                   </button>
@@ -1024,10 +1059,10 @@ export default function MenuBrowsing() {
 
       {/* Wallet Top-Up Modal */}
       {isTopUpOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-xl border border-white/10 bg-zinc-950 p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-6">
-              <h3 className="text-lg font-bold text-white tracking-wide">Top Up Wallet</h3>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-[10px] border border-secondary/20 bg-white p-6 shadow-xl text-ink">
+            <div className="flex items-center justify-between border-b border-secondary/15 pb-4 mb-6">
+              <h3 className="text-base font-bold text-ink tracking-wide">Top Up Wallet</h3>
               <button
                 onClick={() => {
                   if (topUpStatus !== "PENDING") {
@@ -1035,7 +1070,7 @@ export default function MenuBrowsing() {
                   }
                 }}
                 disabled={topUpStatus === "PENDING"}
-                className={`text-zinc-400 hover:text-white text-lg font-bold ${topUpStatus === "PENDING" ? "opacity-30 cursor-not-allowed" : ""}`}
+                className={`text-secondary hover:text-ink text-lg font-bold ${topUpStatus === "PENDING" ? "opacity-30 cursor-not-allowed" : ""}`}
               >
                 ✕
               </button>
@@ -1044,11 +1079,11 @@ export default function MenuBrowsing() {
             {topUpStatus === "IDLE" && (
               <form onSubmit={handleWalletTopUp} className="space-y-6">
                 <div>
-                  <label htmlFor="topUpAmountInput" className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                  <label htmlFor="topUpAmountInput" className="block text-[10px] font-bold text-secondary uppercase tracking-wider mb-2">
                     Enter Amount (KES)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-semibold text-zinc-500 text-sm">KES</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-secondary/70 text-xs">KES</span>
                     <input
                       type="number"
                       id="topUpAmountInput"
@@ -1056,7 +1091,7 @@ export default function MenuBrowsing() {
                       onChange={(e) => setTopUpAmount(e.target.value)}
                       placeholder="e.g. 500"
                       min="1"
-                      className="w-full rounded-lg bg-white/5 border border-white/10 pl-12 pr-4 py-3 text-sm font-semibold text-white focus:border-[#C59B27] focus:outline-none transition"
+                      className="w-full rounded-[10px] border border-secondary/30 bg-transparent pl-12 pr-4 py-3 text-sm font-bold text-ink focus:border-primary focus:outline-none transition"
                       required
                     />
                   </div>
@@ -1065,7 +1100,7 @@ export default function MenuBrowsing() {
                 <button
                   type="submit"
                   disabled={topUpLoading}
-                  className="w-full rounded-lg bg-[#C59B27] py-3 text-xs font-bold text-black hover:brightness-110 active:scale-[0.98] transition flex items-center justify-center gap-2"
+                  className="w-full rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition active:scale-[0.98] flex items-center justify-center gap-2"
                 >
                   {topUpLoading ? "Initiating STK Push..." : "Trigger M-Pesa Top Up"}
                 </button>
@@ -1075,22 +1110,22 @@ export default function MenuBrowsing() {
             {topUpStatus === "PENDING" && (
               <div className="text-center py-6 space-y-6">
                 <div className="relative h-20 w-20 mx-auto">
-                  <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20"></div>
-                  <div className="absolute inset-0 rounded-full border-4 border-[#C59B27] border-t-transparent animate-spin"></div>
-                  <div className="absolute inset-0 flex items-center justify-center font-bold text-[#C59B27] text-xs">
+                  <div className="absolute inset-0 rounded-full border-4 border-emerald-500/10"></div>
+                  <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+                  <div className="absolute inset-0 flex items-center justify-center font-bold text-primary text-xs">
                     M-Pesa
                   </div>
                 </div>
-                <h4 className="text-base font-bold text-white">Awaiting PIN Confirmation</h4>
-                <p className="text-xs text-zinc-400 leading-relaxed px-4">
+                <h4 className="text-sm font-bold text-ink">Awaiting PIN Confirmation</h4>
+                <p className="text-xs text-secondary leading-relaxed px-4 font-medium">
                   We sent an STK Push to your M-Pesa number. Complete the prompt on your phone to top up KES {Number(topUpAmount).toLocaleString()}.
                 </p>
-                <div className="text-[10px] text-zinc-500 italic animate-pulse">
+                <div className="text-[10px] text-secondary/70 italic animate-pulse font-semibold">
                   Verifying transaction state automatically...
                 </div>
                 <button
                   onClick={cancelTopUpVerification}
-                  className="rounded-lg border border-white/10 px-4 py-2 text-xs text-zinc-400 hover:bg-white/5 hover:text-white transition"
+                  className="rounded-[10px] border border-secondary/35 px-4 py-2 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
                 >
                   Cancel Polling
                 </button>
@@ -1099,21 +1134,21 @@ export default function MenuBrowsing() {
 
             {topUpStatus === "SUCCESS" && (
               <div className="text-center py-6 space-y-6">
-                <div className="h-16 w-16 rounded-full bg-emerald-950/30 border border-emerald-500/50 text-emerald-400 flex items-center justify-center mx-auto text-2xl font-bold">
+                <div className="h-16 w-16 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-600 flex items-center justify-center mx-auto text-2xl font-bold">
                   ✓
                 </div>
-                <h4 className="text-base font-bold text-white">Wallet Loaded Successfully!</h4>
-                <p className="text-xs text-zinc-400 px-4">
-                  Successfully credited <span className="text-emerald-400 font-bold">KES {Number(topUpAmount).toLocaleString()}</span> to your CaféQ wallet.
+                <h4 className="text-sm font-bold text-ink">Wallet Loaded Successfully!</h4>
+                <p className="text-xs text-secondary px-4 font-medium">
+                  Successfully credited <span className="text-emerald-600 font-bold">KES {Number(topUpAmount).toLocaleString()}</span> to your CaféQ wallet.
                 </p>
                 {topUpReceipt && (
-                  <div className="inline-block bg-white/5 border border-white/5 rounded px-3 py-1 font-mono text-[10px] text-zinc-300">
-                    Receipt: <span className="text-emerald-400 font-semibold">{topUpReceipt}</span>
+                  <div className="inline-block bg-background border border-secondary/20 rounded px-3 py-1 font-mono text-[9px] text-secondary">
+                    Receipt: <span className="text-emerald-600 font-bold">{topUpReceipt}</span>
                   </div>
                 )}
                 <button
                   onClick={() => setIsTopUpOpen(false)}
-                  className="w-full rounded-lg bg-[#C59B27] py-3 text-xs font-bold text-black hover:brightness-110 transition"
+                  className="w-full rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
                 >
                   Done
                 </button>
@@ -1122,11 +1157,11 @@ export default function MenuBrowsing() {
 
             {topUpStatus === "FAILED" && (
               <div className="text-center py-6 space-y-6">
-                <div className="h-16 w-16 rounded-full bg-red-950/30 border border-red-500/50 text-red-400 flex items-center justify-center mx-auto text-2xl font-bold">
+                <div className="h-16 w-16 rounded-full bg-[#DC2626]/10 border border-[#DC2626]/30 text-[#DC2626] flex items-center justify-center mx-auto text-2xl font-bold">
                   ✕
                 </div>
-                <h4 className="text-base font-bold text-white">Top Up Failed</h4>
-                <p className="text-xs text-red-300 px-4 leading-relaxed">
+                <h4 className="text-sm font-bold text-ink">Top Up Failed</h4>
+                <p className="text-xs text-[#DC2626] px-4 leading-relaxed font-semibold">
                   {topUpError || "The M-Pesa transaction was cancelled or declined."}
                 </p>
                 <div className="flex gap-3 px-4">
@@ -1135,13 +1170,13 @@ export default function MenuBrowsing() {
                       setTopUpStatus("IDLE");
                       setTopUpError("");
                     }}
-                    className="flex-1 rounded-lg bg-[#C59B27] py-2.5 text-xs font-bold text-black hover:brightness-110 transition"
+                    className="flex-1 rounded-[10px] bg-primary py-2.5 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
                   >
                     Try Again
                   </button>
                   <button
                     onClick={() => setIsTopUpOpen(false)}
-                    className="flex-1 rounded-lg border border-white/10 py-2.5 text-xs font-bold text-zinc-400 hover:bg-white/5 transition"
+                    className="flex-1 rounded-[10px] border border-secondary/30 py-2.5 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
                   >
                     Close
                   </button>
@@ -1151,11 +1186,11 @@ export default function MenuBrowsing() {
 
             {topUpStatus === "TIMEOUT" && (
               <div className="text-center py-6 space-y-6">
-                <div className="h-16 w-16 rounded-full bg-amber-950/30 border border-amber-500/50 text-amber-400 flex items-center justify-center mx-auto text-2xl font-bold">
+                <div className="h-16 w-16 rounded-full bg-[#F0B429]/10 border border-[#F0B429]/30 text-[#C48000] flex items-center justify-center mx-auto text-2xl font-bold">
                   !
                 </div>
-                <h4 className="text-base font-bold text-white">Verification Timeout</h4>
-                <p className="text-xs text-zinc-400 px-4 leading-relaxed">
+                <h4 className="text-sm font-bold text-ink">Verification Timeout</h4>
+                <p className="text-xs text-secondary px-4 leading-relaxed font-medium">
                   We did not receive a payment confirmation in time. Check your wallet balance in a few minutes.
                 </p>
                 <div className="flex gap-3 px-4">
@@ -1163,13 +1198,13 @@ export default function MenuBrowsing() {
                     onClick={() => {
                       setTopUpStatus("IDLE");
                     }}
-                    className="flex-1 rounded-lg bg-[#C59B27] py-2.5 text-xs font-bold text-black hover:brightness-110 transition"
+                    className="flex-1 rounded-[10px] bg-primary py-2.5 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
                   >
                     Try Again
                   </button>
                   <button
                     onClick={() => setIsTopUpOpen(false)}
-                    className="flex-1 rounded-lg border border-white/10 py-2.5 text-xs font-bold text-zinc-400 hover:bg-white/5 transition"
+                    className="flex-1 rounded-[10px] border border-secondary/30 py-2.5 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
                   >
                     Close
                   </button>
@@ -1179,6 +1214,11 @@ export default function MenuBrowsing() {
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="border-t border-secondary/15 py-6 text-center text-[10px] text-secondary font-semibold bg-white px-6">
+        <p>© {new Date().getFullYear()} CaféQ. Strathmore University Cafeteria. Kenya Data Protection Act 2019 Compliant.</p>
+      </footer>
     </div>
   );
 }

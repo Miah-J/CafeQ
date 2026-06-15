@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -51,26 +52,26 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#3b0a0a] via-[#1f0505] to-black p-4 text-white font-sans">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-md">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4 text-ink font-sans">
+      <div className="w-full max-w-md rounded-[10px] border border-secondary/20 bg-white p-8 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold tracking-tight text-white">
-            Café<span className="text-[#C59B27]">Q</span>
-          </h2>
-          <p className="mt-2 text-sm text-zinc-400">
-            Strathmore University Dining System
+          <Link href="/" className="text-3xl font-extrabold tracking-tight text-primary hover:opacity-90 transition">
+            CaféQ
+          </Link>
+          <p className="mt-2 text-xs text-secondary font-medium uppercase tracking-wider">
+            Strathmore University Cafeteria System
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg bg-red-900/30 border border-red-500/50 p-3 text-sm text-red-200">
+          <div className="mb-6 rounded-[10px] bg-status-sold-out/10 border border-status-sold-out/30 p-3.5 text-xs text-status-sold-out font-bold">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
               Email Address
             </label>
             <input
@@ -79,12 +80,12 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="e.g. student@strathmore.edu"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
+              className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
               Password
             </label>
             <input
@@ -93,32 +94,30 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
+              className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-gradient-to-r from-[#7A1C1C] to-[#C59B27] py-3 text-sm font-semibold text-white shadow-lg hover:brightness-110 active:scale-[0.98] transition disabled:opacity-50"
+            className="w-full rounded-[10px] bg-primary py-3 text-sm font-bold text-white shadow-sm hover:bg-accent hover:text-ink transition active:scale-[0.98] disabled:opacity-50"
           >
             {loading ? "Authenticating..." : "Sign In"}
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm">
-          <span className="text-zinc-400">Don&apos;t have an account? </span>
+        <div className="mt-6 text-center text-xs border-t border-secondary/15 pt-6">
+          <span className="text-secondary font-medium">Don&apos;t have an account? </span>
           <button
             onClick={() => router.push("/register")}
-            className="text-[#C59B27] hover:underline font-semibold"
+            className="text-primary hover:text-accent font-bold transition"
           >
             Register here
           </button>
         </div>
 
-        <div className="mt-6 text-center text-xs text-zinc-500">
-          Kenya Data Protection Act 2019 Compliant
-        </div>
+
       </div>
     </div>
   );

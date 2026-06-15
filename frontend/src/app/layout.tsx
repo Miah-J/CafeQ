@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   title: "CafeQ",
@@ -14,9 +20,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className="h-full antialiased font-sans"
+      className={`h-full antialiased ${inter.variable}`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col font-sans bg-background text-ink">{children}</body>
     </html>
   );
 }
+

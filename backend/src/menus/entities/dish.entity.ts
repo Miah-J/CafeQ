@@ -39,6 +39,9 @@ export class Dish {
   @Column({ name: 'is_sold_out', default: false })
   isSoldOut: boolean;
 
+  @Column({ name: 'image_url', type: 'varchar', length: 500, nullable: true })
+  imageUrl: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt: Date;
 

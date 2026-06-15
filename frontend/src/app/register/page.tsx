@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Register() {
   const router = useRouter();
@@ -106,7 +107,7 @@ export default function Register() {
       }
 
       setSuccess("Successfully verified and registered!");
-      
+
       // Auto login
       localStorage.setItem("token", data.accessToken);
       localStorage.setItem("user", JSON.stringify(data.user));
@@ -123,33 +124,33 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#3b0a0a] via-[#1f0505] to-black p-4 text-white font-sans">
-      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-md">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4 text-ink font-sans">
+      <div className="w-full max-w-lg rounded-[10px] border border-secondary/20 bg-white p-8 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold tracking-tight text-white">
-            Café<span className="text-[#C59B27]">Q</span>
-          </h2>
-          <p className="mt-2 text-sm text-zinc-400">
+          <Link href="/" className="text-3xl font-extrabold tracking-tight text-primary hover:opacity-90 transition">
+            CaféQ
+          </Link>
+          <p className="mt-2 text-xs text-secondary font-medium uppercase tracking-wider">
             Student Account Registration
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg bg-red-900/30 border border-red-500/50 p-3 text-sm text-red-200">
+          <div className="mb-5 rounded-[10px] bg-status-sold-out/10 border border-status-sold-out/30 p-3.5 text-xs text-status-sold-out font-bold">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-4 rounded-lg bg-emerald-950/40 border border-emerald-500/50 p-3 text-sm text-emerald-200">
+          <div className="mb-5 rounded-[10px] bg-emerald-500/10 border border-emerald-500/30 p-3.5 text-xs text-emerald-600 font-bold">
             {success}
           </div>
         )}
 
         {step === 1 ? (
-          <form onSubmit={handleSendOtp} className="space-y-5">
+          <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
                 Full Name
               </label>
               <input
@@ -158,13 +159,13 @@ export default function Register() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Jane Doe"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
+                className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
                   Student Email Address
                 </label>
                 <input
@@ -173,12 +174,12 @@ export default function Register() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="jane.doe@strathmore.edu"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
+                  className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
                   Student ID Number
                 </label>
                 <input
@@ -187,13 +188,13 @@ export default function Register() {
                   value={studentNumber}
                   onChange={(e) => setStudentNumber(e.target.value)}
                   placeholder="e.g. SU-12345"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
+                  className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
                 Phone Number (for OTP & M-Pesa STK)
               </label>
               <input
@@ -202,13 +203,13 @@ export default function Register() {
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="07XXXXXXXX"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
+                className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
                   Password
                 </label>
                 <input
@@ -217,12 +218,12 @@ export default function Register() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
+                  className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
                   Confirm Password
                 </label>
                 <input
@@ -231,7 +232,7 @@ export default function Register() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
+                  className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
                 />
               </div>
             </div>
@@ -239,25 +240,25 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-gradient-to-r from-[#7A1C1C] to-[#C59B27] py-3 text-sm font-semibold text-white shadow-lg hover:brightness-110 active:scale-[0.98] transition disabled:opacity-50"
+              className="w-full rounded-[10px] bg-primary py-3 text-sm font-bold text-white shadow-sm hover:bg-accent hover:text-ink transition active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? "Requesting Codes..." : "Send Verification Codes"}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleVerifyAndRegister} className="space-y-6">
-            <p className="text-sm text-zinc-400 text-center">
+          <form onSubmit={handleVerifyAndRegister} className="space-y-5">
+            <p className="text-xs text-secondary text-center leading-relaxed">
               Please enter the 6-digit verification codes sent to your Strathmore email and registered phone number.
             </p>
 
             {emailPreviewUrl && (
-              <div className="rounded-lg border border-[#C59B27]/40 bg-[#C59B27]/10 p-3 text-center">
-                <p className="text-xs text-[#C59B27] mb-1 font-semibold">Development Mock Mode</p>
+              <div className="rounded-[10px] border border-accent/30 bg-accent/10 p-3.5 text-center">
+                <p className="text-[10px] text-[#A6751E] mb-1 font-bold uppercase tracking-wider">Development Mock Mode</p>
                 <a
                   href={emailPreviewUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-white hover:underline text-sm font-bold block"
+                  className="text-primary hover:underline text-xs font-bold block"
                 >
                   ✉️ Click to View Verification Email
                 </a>
@@ -266,7 +267,7 @@ export default function Register() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
                   Email Verification Code
                 </label>
                 <input
@@ -276,12 +277,12 @@ export default function Register() {
                   onChange={(e) => setEmailOtp(e.target.value)}
                   placeholder="123456"
                   maxLength={6}
-                  className="w-full text-center rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-base font-bold tracking-widest text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
+                  className="w-full text-center rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-base font-bold tracking-widest text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
                   Phone SMS Code
                 </label>
                 <input
@@ -291,7 +292,7 @@ export default function Register() {
                   onChange={(e) => setPhoneOtp(e.target.value)}
                   placeholder="654321"
                   maxLength={6}
-                  className="w-full text-center rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-base font-bold tracking-widest text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
+                  className="w-full text-center rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-base font-bold tracking-widest text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
                 />
               </div>
             </div>
@@ -300,14 +301,14 @@ export default function Register() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="w-1/3 rounded-lg border border-white/20 hover:bg-white/5 py-3 text-sm font-semibold text-zinc-300 transition"
+                className="w-1/3 rounded-[10px] border border-secondary/30 hover:bg-secondary/5 py-3 text-sm font-bold text-secondary transition"
               >
                 Back
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-2/3 rounded-lg bg-gradient-to-r from-[#7A1C1C] to-[#C59B27] py-3 text-sm font-semibold text-white shadow-lg hover:brightness-110 active:scale-[0.98] transition disabled:opacity-50"
+                className="w-2/3 rounded-[10px] bg-primary py-3 text-sm font-bold text-white shadow-sm hover:bg-accent hover:text-ink transition active:scale-[0.98] disabled:opacity-50"
               >
                 {loading ? "Verifying..." : "Verify & Sign Up"}
               </button>
@@ -315,10 +316,10 @@ export default function Register() {
           </form>
         )}
 
-        <div className="mt-8 pt-4 border-t border-white/5 text-center">
+        <div className="mt-8 pt-6 border-t border-secondary/15 text-center">
           <button
             onClick={() => router.push("/login")}
-            className="text-xs text-zinc-400 hover:text-white transition"
+            className="text-xs text-primary hover:text-accent font-bold transition"
           >
             Already have an account? Sign In
           </button>

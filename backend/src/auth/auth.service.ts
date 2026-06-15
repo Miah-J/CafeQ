@@ -20,7 +20,7 @@ export class AuthService {
     private readonly redisService: RedisService,
     private readonly emailService: EmailService,
     private readonly smsService: SmsService,
-  ) {}
+  ) { }
 
   async sendOtp(data: {
     email: string;

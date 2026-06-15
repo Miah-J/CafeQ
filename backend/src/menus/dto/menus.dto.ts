@@ -35,6 +35,10 @@ export class CreateDishDto {
   @IsNumber()
   @Min(0)
   preparedQuantity: number;
+
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
 }
 
 export class UpdateDishDto {
@@ -58,4 +62,8 @@ export class UpdateDishDto {
   @IsNumber()
   @IsOptional()
   preparedQuantity?: number;
+
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
 }

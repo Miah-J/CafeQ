@@ -12,6 +12,7 @@ interface Dish {
   preparedQuantity: number;
   liveQuantity: number;
   isSoldOut: boolean;
+  imageUrl?: string | null;
 }
 
 interface Menu {
@@ -52,7 +53,7 @@ interface CashierOrderResult {
   paymentStatus: "SUCCESS" | "PENDING";
 }
 
-const DIETARY_FILTERS = ["Halal", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free"];
+const DIETARY_FILTERS = ["All", "Halal", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free"];
 
 export default function CashierWorkspace() {
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -101,10 +102,12 @@ export default function CashierWorkspace() {
     Promise.resolve().then(() => {
       setUser(parsedUser);
     }).catch(() => {});
+    
     const fetchMenu = async () => {
       try {
-        const queryParams = selectedTags.length > 0
-          ? `?tags=${selectedTags.join(",")}`
+        const activeFilters = selectedTags.filter(t => t !== "All");
+        const queryParams = activeFilters.length > 0
+          ? `?tags=${activeFilters.join(",")}`
           : "";
 
         const res = await fetch(`http://localhost:3001/menus/active${queryParams}`, {
@@ -135,10 +138,14 @@ export default function CashierWorkspace() {
   }, [selectedTags, router]);
 
   const toggleTag = (tag: string) => {
+    if (tag === "All") {
+      setSelectedTags([]);
+      return;
+    }
     if (selectedTags.includes(tag)) {
       setSelectedTags(selectedTags.filter((t) => t !== tag));
     } else {
-      setSelectedTags([...selectedTags, tag]);
+      setSelectedTags([...selectedTags.filter(t => t !== "All"), tag]);
     }
   };
 
@@ -335,368 +342,429 @@ export default function CashierWorkspace() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-background text-ink font-sans">
         <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#C59B27] border-t-transparent mx-auto mb-4"></div>
-          <p className="text-zinc-400 text-sm">Loading cashier workspace...</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4"></div>
+          <p className="text-secondary text-xs font-bold">Loading cashier workspace...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#140404] to-black text-white font-sans">
+    <div className="min-h-screen bg-background text-ink font-sans flex flex-col justify-between select-none">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-white/5 bg-black/60 backdrop-blur-md px-6 py-4">
-        <div className="max-w-[1600px] mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Café<span className="text-[#C59B27]">Q</span>
-              <span className="text-sm font-normal text-zinc-400 ml-3">Cashier Terminal</span>
-            </h1>
-            {user && (
-              <p className="text-xs text-zinc-400 mt-0.5">
-                Logged in as <span className="text-[#C59B27]">{user.fullName}</span>
-              </p>
-            )}
-          </div>
+      <header className="bg-primary px-6 py-4 sticky top-0 z-40 text-white shadow-sm flex items-center justify-between">
+        <div className="max-w-[1600px] w-full mx-auto flex items-center justify-between">
+          <h1 className="text-2xl font-extrabold tracking-tight hover:opacity-90 transition">
+            CaféQ <span className="text-sm font-normal text-white/80 ml-3">Cashier Terminal</span>
+          </h1>
+          {user && (
+            <span className="text-xs font-bold uppercase tracking-wider bg-white/10 px-3 py-1 rounded">
+              Active Terminal
+            </span>
+          )}
+        </div>
+      </header>
+
+      {/* Sub Bar */}
+      <section className="bg-white border-b border-secondary/20 px-6 py-3">
+        <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
+          {user && (
+            <p className="text-xs text-secondary font-semibold">
+              Logged in as: <span className="text-primary font-bold">{user.fullName}</span> ({user.role})
+            </p>
+          )}
           <button
             onClick={handleLogout}
-            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/5 transition"
+            className="rounded border border-secondary/30 px-3 py-1 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
           >
             Sign Out
           </button>
         </div>
-      </header>
+      </section>
 
       {/* Main Two-Panel Layout */}
-      <div className="max-w-[1600px] mx-auto flex gap-0 min-h-[calc(100vh-73px)]">
-        {/* LEFT PANEL — Menu Catalog */}
-        <div className="flex-1 border-r border-white/5 p-6 overflow-y-auto">
-          {/* Search */}
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Search dishes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
-            />
-          </div>
+      <main className="max-w-[1600px] w-full mx-auto px-6 py-8 flex-grow">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          
+          {/* LEFT PANEL — Menu Catalog */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Search and Filters */}
+            <div className="flex flex-col gap-4">
+              <input
+                type="text"
+                placeholder="Search dishes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full rounded-[10px] border border-secondary/30 bg-white px-4 py-2.5 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none transition"
+              />
 
-          {/* Dietary Filters */}
-          <div className="mb-6">
-            <div className="flex flex-wrap gap-2">
-              {DIETARY_FILTERS.map((tag) => {
-                const active = selectedTags.includes(tag);
-                return (
-                  <button
-                    key={tag}
-                    onClick={() => toggleTag(tag)}
-                    className={`rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wide transition border ${
-                      active
-                        ? "bg-[#7A1C1C] border-[#7A1C1C] text-white"
-                        : "bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                );
-              })}
+              <div className="flex flex-wrap gap-2">
+                {DIETARY_FILTERS.map((tag) => {
+                  const active = tag === "All" ? selectedTags.length === 0 : selectedTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => toggleTag(tag)}
+                      className={`rounded-full px-4 py-2 text-xs font-bold tracking-wide transition border ${
+                        active
+                          ? "bg-primary border-primary text-white"
+                          : "bg-white border-secondary/35 text-secondary hover:bg-secondary/5"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          {/* Dish List */}
-          {!menu ? (
-            <div className="text-center py-20 rounded-2xl border border-dashed border-white/10 bg-white/5">
-              <h2 className="text-lg font-semibold text-zinc-400">No active menu</h2>
-              <p className="text-sm text-zinc-500 mt-2">Check back during serving hours.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {filteredDishes.map((dish) => {
-                const isSoldOut = dish.isSoldOut || dish.liveQuantity <= 0;
-                const lowStock = dish.liveQuantity > 0 && dish.liveQuantity <= 20;
-                const inCart = cart.find((c) => c.id === dish.id);
+            {/* Dish List Grid */}
+            {!menu ? (
+              <div className="text-center py-20 rounded-[10px] border border-dashed border-secondary/20 bg-white">
+                <h2 className="text-lg font-semibold text-secondary">No active menu</h2>
+                <p className="text-sm text-secondary/70 mt-2">Check back during serving hours.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filteredDishes.map((dish) => {
+                  const isSoldOut = dish.isSoldOut || dish.liveQuantity <= 0;
+                  const isLowStock = dish.liveQuantity > 0 && dish.liveQuantity <= 20;
+                  const inCart = cart.find((c) => c.id === dish.id);
 
-                return (
-                  <div
-                    key={dish.id}
-                    onClick={() => !isSoldOut && addToCart(dish)}
-                    className={`relative flex items-center justify-between rounded-xl border p-4 transition cursor-pointer ${
-                      isSoldOut
-                        ? "border-white/5 bg-white/2 opacity-50 cursor-not-allowed"
-                        : inCart
-                        ? "border-[#C59B27]/40 bg-[#C59B27]/5 hover:bg-[#C59B27]/10"
-                        : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold text-white text-sm truncate">{dish.name}</h4>
-                        {inCart && (
-                          <span className="text-[10px] bg-[#C59B27] text-black px-1.5 py-0.5 rounded font-bold">
-                            ×{inCart.quantity}
-                          </span>
+                  return (
+                    <div
+                      key={dish.id}
+                      onClick={() => !isSoldOut && addToCart(dish)}
+                      className={`relative flex flex-col justify-between rounded-[10px] border p-6 bg-white transition duration-150 cursor-pointer ${
+                        isSoldOut
+                          ? "border-secondary/20 opacity-60 bg-secondary/5 cursor-not-allowed"
+                          : inCart
+                          ? "border-primary bg-primary/5 hover:bg-primary/10"
+                          : "border-secondary/20 hover:border-accent hover:shadow-[0_2px_8px_rgba(0,0,0,0.01)]"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex gap-4 items-start mb-4">
+                          <div className="w-16 h-16 rounded-[8px] overflow-hidden shrink-0 border border-secondary/15 bg-gradient-to-br from-primary/10 to-accent/20 flex items-center justify-center">
+                            {dish.imageUrl ? (
+                              <img src={dish.imageUrl} alt={dish.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xl">🍲</span>
+                            )}
+                          </div>
+                          
+                          <div className="flex-grow min-w-0">
+                            {/* Name & Price */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <h4 className={`font-bold tracking-wide text-sm ${isSoldOut ? "text-secondary" : "text-ink"}`}>
+                                  {dish.name}
+                                </h4>
+                                {inCart && (
+                                  <span className="text-[10px] bg-primary text-white px-1.5 py-0.5 rounded font-bold">
+                                    ×{inCart.quantity}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-bold text-ink text-sm shrink-0">
+                                KES {Number(dish.price).toLocaleString()}
+                              </span>
+                            </div>
+
+                            {/* Description */}
+                            {dish.description && (
+                              <p className="text-xs text-secondary leading-relaxed mt-1 line-clamp-2">
+                                {dish.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Tag Badges */}
+                        {dish.dietaryTags && dish.dietaryTags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-4">
+                            {dish.dietaryTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded bg-accent/15 border border-accent/30 px-2 py-0.5 text-[9px] text-ink font-bold uppercase tracking-wider"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-[#C59B27] font-bold">
-                          KES {Number(dish.price).toLocaleString()}
-                        </span>
+
+                      {/* Footer / Portions remaining */}
+                      <div className="mt-4 border-t border-secondary/10 pt-4 flex items-center justify-between text-xs text-secondary font-medium">
+                        <span>Portions remaining:</span>
                         {isSoldOut ? (
-                          <span className="text-[10px] text-red-400 font-bold">SOLD OUT</span>
-                        ) : lowStock ? (
-                          <span className="text-[10px] text-amber-400 font-bold animate-pulse">
-                            {dish.liveQuantity} left
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-status-sold-out/10 border border-status-sold-out/40 text-status-sold-out">
+                            SOLD OUT
                           </span>
+                        ) : isLowStock ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="font-semibold text-ink">
+                              {dish.liveQuantity} portions
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-status-low-stock/15 border border-status-low-stock/40 text-status-low-stock animate-pulse">
+                              LOW STOCK
+                            </span>
+                          </div>
                         ) : (
-                          <span className="text-[10px] text-zinc-500">
+                          <span className="font-semibold text-ink">
                             {dish.liveQuantity} portions
                           </span>
                         )}
                       </div>
                     </div>
-                    {!isSoldOut && (
-                      <span className="text-zinc-500 text-lg ml-3">+</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-        {/* RIGHT PANEL — Order Builder */}
-        <div className="w-[440px] flex-shrink-0 flex flex-col p-6 bg-black/30">
-          {/* Order Success State */}
-          {orderResult ? (
-            <div className="flex-1 flex flex-col items-center justify-center">
-              {/* CASH success or M-Pesa confirmed */}
-              {(orderResult.paymentStatus === "SUCCESS" || mpesaPollStatus === "SUCCESS") ? (
-                <div className="w-full text-center">
-                  <div className="h-14 w-14 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4 text-2xl">
-                    ✓
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-1">Order Confirmed</h3>
-                  <p className="text-xs text-zinc-400 mb-6">
-                    {paymentMethod === "CASH" ? "Cash payment received." : "M-Pesa payment confirmed."}
-                  </p>
+          {/* RIGHT PANEL — Order Builder */}
+          <aside className="bg-white border border-secondary/20 rounded-[10px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+            {orderResult ? (
+              <div className="flex-1 flex flex-col items-center justify-center">
+                
+                {/* SUCCESS STATE */}
+                {(orderResult.paymentStatus === "SUCCESS" || mpesaPollStatus === "SUCCESS") ? (
+                  <div className="w-full text-center">
+                    <div className="h-12 w-12 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-600 flex items-center justify-center mx-auto mb-4 text-xl font-bold">
+                      ✓
+                    </div>
+                    <h3 className="text-xl font-bold text-ink mb-2">Order Confirmed</h3>
+                    <p className="text-xs text-secondary mb-6 leading-relaxed">
+                      {paymentMethod === "CASH" ? "Cash payment received." : "M-Pesa payment confirmed."}
+                    </p>
 
-                  {/* Reference Code */}
-                  <div className="p-5 rounded-2xl border border-[#C59B27]/30 bg-gradient-to-r from-[#C59B27]/5 to-[#C59B27]/10 text-center shadow-inner mb-6">
-                    <div className="text-[10px] uppercase font-bold tracking-widest text-zinc-400 mb-1">
-                      Pickup Reference Code
+                    {/* Reference Code */}
+                    <div className="p-5 rounded-[10px] border border-accent bg-accent/10 text-center shadow-inner mb-6">
+                      <div className="text-[10px] uppercase font-bold tracking-widest text-secondary mb-1">
+                        Pickup Reference Code
+                      </div>
+                      <div className="text-4xl font-black tracking-widest text-primary font-mono select-all">
+                        {orderResult.referenceCode || mpesaReferenceCode}
+                      </div>
                     </div>
-                    <div className="text-4xl font-black tracking-widest text-[#C59B27] font-mono select-all">
-                      {orderResult.referenceCode || mpesaReferenceCode}
+
+                    <div className="rounded-[10px] border border-secondary/25 p-4 text-left mb-6 text-xs space-y-2 text-secondary">
+                      <div className="flex justify-between">
+                        <span>Order ID:</span>
+                        <span className="font-mono text-ink font-bold">{orderResult.order.id.substring(0, 8)}...</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total:</span>
+                        <span className="text-primary font-bold">KES {Number(orderResult.order.totalAmount).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Payment:</span>
+                        <span className="text-emerald-600 font-semibold">{paymentMethod}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => copyReference(orderResult.referenceCode || mpesaReferenceCode)}
+                          className="flex-1 rounded-[10px] border border-secondary/30 py-2.5 text-xs font-bold text-secondary hover:bg-secondary/5 transition cursor-pointer"
+                        >
+                          {copied ? "Copied!" : "Copy Ref"}
+                        </button>
+                        <button
+                          onClick={() => window.print()}
+                          className="flex-1 rounded-[10px] border border-secondary/30 py-2.5 text-xs font-bold text-secondary hover:bg-secondary/5 transition cursor-pointer"
+                        >
+                          Print
+                        </button>
+                      </div>
+                      <button
+                        onClick={handleNewOrder}
+                        className="w-full rounded-[10px] bg-primary py-2.5 text-xs font-bold text-white hover:bg-accent hover:text-ink transition cursor-pointer"
+                      >
+                        New Order
+                      </button>
                     </div>
                   </div>
-
-                  <div className="rounded-lg bg-white/5 border border-white/5 p-4 text-left mb-6 text-xs space-y-2">
-                    <div className="flex justify-between text-zinc-400">
-                      <span>Order ID:</span>
-                      <span className="font-mono text-white">{orderResult.order.id.substring(0, 8)}...</span>
-                    </div>
-                    <div className="flex justify-between text-zinc-400">
-                      <span>Total:</span>
-                      <span className="text-[#C59B27] font-bold">KES {Number(orderResult.order.totalAmount).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-zinc-400">
-                      <span>Payment:</span>
-                      <span className="text-emerald-400 font-semibold">{paymentMethod}</span>
-                    </div>
+                ) : mpesaPollStatus === "POLLING" ? (
+                  <div className="text-center py-8">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4"></div>
+                    <h3 className="text-lg font-bold text-ink mb-2">Awaiting M-Pesa Payment</h3>
+                    <p className="text-xs text-secondary leading-relaxed">
+                      STK Push sent to student&apos;s phone. Waiting for confirmation...
+                    </p>
                   </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => copyReference(orderResult.referenceCode || mpesaReferenceCode)}
-                      className="flex-1 rounded-lg border border-white/10 py-2.5 text-xs font-bold text-zinc-300 hover:bg-white/5 transition"
-                    >
-                      {copied ? "Copied!" : "Copy Ref"}
-                    </button>
-                    <button
-                      onClick={() => window.print()}
-                      className="flex-1 rounded-lg border border-white/10 py-2.5 text-xs font-bold text-zinc-300 hover:bg-white/5 transition"
-                    >
-                      Print
-                    </button>
+                ) : mpesaPollStatus === "FAILED" || mpesaPollStatus === "TIMEOUT" ? (
+                  <div className="text-center py-8">
+                    <div className="h-12 w-12 rounded-full bg-red-100 border border-red-300 text-status-sold-out flex items-center justify-center mx-auto mb-4 text-xl font-bold">
+                      ✕
+                    </div>
+                    <h3 className="text-lg font-bold text-ink mb-2">
+                      {mpesaPollStatus === "TIMEOUT" ? "Payment Timed Out" : "Payment Failed"}
+                    </h3>
+                    <p className="text-xs text-secondary mb-6 leading-relaxed">The M-Pesa transaction was not completed.</p>
                     <button
                       onClick={handleNewOrder}
-                      className="flex-1 rounded-lg bg-[#C59B27] py-2.5 text-xs font-bold text-black hover:brightness-110 transition"
+                      className="rounded-[10px] bg-primary px-6 py-2.5 text-xs font-bold text-white hover:bg-accent hover:text-ink transition cursor-pointer"
                     >
-                      New Order
+                      Start New Order
                     </button>
                   </div>
-                </div>
-              ) : mpesaPollStatus === "POLLING" ? (
-                <div className="text-center">
-                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#C59B27] border-t-transparent mx-auto mb-4"></div>
-                  <h3 className="text-lg font-bold text-white mb-2">Awaiting M-Pesa Payment</h3>
-                  <p className="text-xs text-zinc-400">
-                    STK Push sent to student&apos;s phone. Waiting for confirmation...
-                  </p>
-                </div>
-              ) : mpesaPollStatus === "FAILED" || mpesaPollStatus === "TIMEOUT" ? (
-                <div className="text-center">
-                  <div className="h-14 w-14 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mx-auto mb-4 text-2xl">
-                    ✕
-                  </div>
-                  <h3 className="text-lg font-bold text-white mb-2">
-                    {mpesaPollStatus === "TIMEOUT" ? "Payment Timed Out" : "Payment Failed"}
-                  </h3>
-                  <p className="text-xs text-zinc-400 mb-6">The M-Pesa transaction was not completed.</p>
-                  <button
-                    onClick={handleNewOrder}
-                    className="rounded-lg bg-[#C59B27] px-6 py-2.5 text-xs font-bold text-black hover:brightness-110 transition"
-                  >
-                    Start New Order
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <>
-              <h3 className="text-lg font-bold text-white tracking-wide mb-4 border-b border-white/5 pb-3">
-                Order Builder
-              </h3>
-
-              {/* Student Lookup */}
-              <div className="mb-5">
-                <label className="block text-[10px] uppercase font-bold tracking-widest text-zinc-400 mb-2">
-                  Student Number (optional)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="e.g. STR001"
-                    value={studentNumberInput}
-                    onChange={(e) => setStudentNumberInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && void handleStudentLookup()}
-                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-[#C59B27] focus:outline-none focus:ring-1 focus:ring-[#C59B27] transition"
-                  />
-                  <button
-                    onClick={() => void handleStudentLookup()}
-                    disabled={studentLoading}
-                    className="rounded-lg bg-white/10 border border-white/10 px-4 py-2 text-xs font-bold text-zinc-300 hover:bg-white/20 transition disabled:opacity-50"
-                  >
-                    {studentLoading ? "..." : "Verify"}
-                  </button>
-                </div>
-                {studentLookup && (
-                  <div className={`mt-2 rounded-lg p-2.5 text-xs ${
-                    studentLookup.found
-                      ? "bg-emerald-950/30 border border-emerald-500/30 text-emerald-300"
-                      : "bg-red-950/30 border border-red-500/30 text-red-300"
-                  }`}>
-                    {studentLookup.found
-                      ? `✓ ${studentLookup.fullName} (${studentLookup.studentNumber})`
-                      : "✕ Student not found. Proceeding as walk-in."}
-                  </div>
-                )}
+                ) : null}
               </div>
+            ) : (
+              <>
+                <h3 className="text-base font-bold text-ink mb-4 pb-3 border-b border-secondary/15 tracking-wide">
+                  Order Builder
+                </h3>
 
-              {/* Cart Items */}
-              <div className="flex-1 overflow-y-auto mb-4">
-                {cart.length === 0 ? (
-                  <div className="text-center py-16">
-                    <p className="text-zinc-500 text-sm">Select dishes from the left panel to begin.</p>
+                {/* Student Lookup */}
+                <div className="mb-5">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
+                    Student Number (optional)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. STR001"
+                      value={studentNumberInput}
+                      onChange={(e) => setStudentNumberInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && void handleStudentLookup()}
+                      className="flex-1 rounded-[10px] border border-secondary/30 bg-transparent px-3 py-2 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none transition"
+                    />
+                    <button
+                      onClick={() => void handleStudentLookup()}
+                      disabled={studentLoading}
+                      className="rounded-[10px] bg-white border border-secondary/30 px-4 py-2 text-xs font-bold text-secondary hover:bg-secondary/5 transition disabled:opacity-50 cursor-pointer"
+                    >
+                      {studentLoading ? "..." : "Verify"}
+                    </button>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between border-b border-white/5 pb-3">
-                        <div>
-                          <h4 className="font-semibold text-white text-sm">{item.name}</h4>
-                          <p className="text-[11px] text-zinc-500">
-                            KES {item.price.toLocaleString()} × {item.quantity} = KES {(item.price * item.quantity).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => updateCartQuantity(item.id, -1)}
-                            className="h-7 w-7 rounded bg-white/5 border border-white/10 flex items-center justify-center text-xs hover:bg-white/10 transition"
-                          >
-                            −
-                          </button>
-                          <span className="text-sm font-bold w-5 text-center">{item.quantity}</span>
-                          <button
-                            onClick={() => updateCartQuantity(item.id, 1)}
-                            className="h-7 w-7 rounded bg-white/5 border border-white/10 flex items-center justify-center text-xs hover:bg-white/10 transition"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Payment Method Toggle */}
-              {cart.length > 0 && (
-                <div className="border-t border-white/5 pt-4 space-y-4">
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold tracking-widest text-zinc-400 mb-2">
-                      Payment Method
-                    </label>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setPaymentMethod("CASH")}
-                        className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition border ${
-                          paymentMethod === "CASH"
-                            ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
-                            : "bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10"
-                        }`}
-                      >
-                        💵 Cash
-                      </button>
-                      <button
-                        onClick={() => setPaymentMethod("MPESA")}
-                        className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition border ${
-                          paymentMethod === "MPESA"
-                            ? "bg-[#4CAF50]/20 border-[#4CAF50]/40 text-[#4CAF50]"
-                            : "bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10"
-                        }`}
-                      >
-                        📱 M-Pesa
-                      </button>
-                    </div>
-                    {paymentMethod === "MPESA" && (!studentLookup || !studentLookup.found) && (
-                      <p className="text-[10px] text-amber-400 mt-1.5">
-                        ⚠ M-Pesa requires a verified student number
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Total */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-zinc-400">Total:</span>
-                    <span className="text-xl font-bold text-[#C59B27]">
-                      KES {cartTotal.toLocaleString()}
-                    </span>
-                  </div>
-
-                  {orderError && (
-                    <div className="rounded-lg bg-red-950/20 border border-red-500/30 p-2.5 text-xs text-red-200">
-                      {orderError}
+                  {studentLookup && (
+                    <div className={`mt-2 rounded-[10px] p-2.5 text-xs font-semibold ${
+                      studentLookup.found
+                        ? "bg-emerald-50 border border-emerald-300 text-emerald-700"
+                        : "bg-red-50 border border-status-sold-out/30 text-status-sold-out"
+                    }`}>
+                      {studentLookup.found
+                        ? `✓ ${studentLookup.fullName} (${studentLookup.studentNumber})`
+                        : "✕ Student not found. Proceeding as walk-in."}
                     </div>
                   )}
-
-                  {/* Place Order Button */}
-                  <button
-                    onClick={() => void handlePlaceOrder()}
-                    disabled={orderLoading || (paymentMethod === "MPESA" && (!studentLookup || !studentLookup.found))}
-                    className="w-full rounded-lg bg-gradient-to-r from-[#7A1C1C] to-[#C59B27] py-3 text-sm font-bold text-white shadow-lg hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {orderLoading ? "Processing..." : `Place Order & Pay (${paymentMethod})`}
-                  </button>
                 </div>
-              )}
-            </>
-          )}
+
+                {/* Cart Items */}
+                <div className="flex-1 overflow-y-auto mb-4 min-h-[150px]">
+                  {cart.length === 0 ? (
+                    <div className="text-center py-10">
+                      <p className="text-secondary text-xs font-medium">Select dishes from the left panel to begin.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {cart.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between border-b border-secondary/10 pb-3">
+                          <div>
+                            <h4 className="font-bold text-ink text-xs mb-1">{item.name}</h4>
+                            <p className="text-[10px] text-secondary font-medium">
+                              KES {item.price.toLocaleString()} × {item.quantity} = KES {(item.price * item.quantity).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => updateCartQuantity(item.id, -1)}
+                              className="h-6 w-6 rounded border border-secondary/35 flex items-center justify-center text-xs font-bold text-secondary hover:bg-secondary/5 transition cursor-pointer font-bold"
+                            >
+                              −
+                            </button>
+                            <span className="text-xs font-bold text-ink min-w-4 text-center">{item.quantity}</span>
+                            <button
+                              onClick={() => updateCartQuantity(item.id, 1)}
+                              className="h-6 w-6 rounded border border-secondary/35 flex items-center justify-center text-xs font-bold text-secondary hover:bg-secondary/5 transition cursor-pointer font-bold"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Payment Method Toggle */}
+                {cart.length > 0 && (
+                  <div className="border-t border-secondary/15 pt-4 space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
+                        Payment Method
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setPaymentMethod("CASH")}
+                          className={`flex-1 rounded-[10px] py-2.5 text-xs font-bold transition border cursor-pointer ${
+                            paymentMethod === "CASH"
+                              ? "bg-emerald-50 border-emerald-500/40 text-emerald-700"
+                              : "bg-white border-secondary/35 text-secondary hover:bg-secondary/5"
+                          }`}
+                        >
+                          💵 Cash
+                        </button>
+                        <button
+                          onClick={() => setPaymentMethod("MPESA")}
+                          className={`flex-1 rounded-[10px] py-2.5 text-xs font-bold transition border cursor-pointer ${
+                            paymentMethod === "MPESA"
+                              ? "bg-amber-50 border-status-low-stock/40 text-status-low-stock"
+                              : "bg-white border-secondary/35 text-secondary hover:bg-secondary/5"
+                          }`}
+                        >
+                          📱 M-Pesa
+                        </button>
+                      </div>
+                      {paymentMethod === "MPESA" && (!studentLookup || !studentLookup.found) && (
+                        <p className="text-[10px] text-status-low-stock font-bold mt-1.5 animate-pulse">
+                          ⚠ M-Pesa requires a verified student number
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Total */}
+                    <div className="flex items-center justify-between border-t border-secondary/10 pt-3">
+                      <span className="text-xs font-bold text-secondary">Grand Total Amount:</span>
+                      <span className="text-lg font-black text-primary font-mono">
+                        KES {cartTotal.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {orderError && (
+                      <div className="rounded-[10px] bg-status-sold-out/10 border border-status-sold-out/30 p-2.5 text-xs font-bold text-status-sold-out">
+                        {orderError}
+                      </div>
+                    )}
+
+                    {/* Place Order Button */}
+                    <button
+                      onClick={() => void handlePlaceOrder()}
+                      disabled={orderLoading || (paymentMethod === "MPESA" && (!studentLookup || !studentLookup.found))}
+                      className="w-full rounded-[10px] bg-primary py-3 text-sm font-bold text-white shadow-sm hover:bg-accent hover:text-ink transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none cursor-pointer"
+                    >
+                      {orderLoading ? "Processing..." : `Place Order & Pay (${paymentMethod})`}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </aside>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-secondary/15 py-6 text-center text-[10px] text-secondary font-semibold bg-white px-6">
+        <p>© {new Date().getFullYear()} CaféQ. Strathmore University Cafeteria. Kenya Data Protection Act 2019 Compliant.</p>
+      </footer>
     </div>
   );
 }

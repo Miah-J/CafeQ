@@ -253,4 +253,40 @@ export class MenusService {
     const result = await redis.incrby(key, quantity);
     return result;
   }
+
+  async getAllMenus(): Promise<Menu[]> {
+    return this.menuRepository.find({
+      order: { publishDate: 'DESC' },
+      relations: { dishes: true },
+    });
+  }
+
+  async updateMenu(menuId: string, dto: CreateMenuDto): Promise<Menu> {
+    const menu = await this.menuRepository.findOne({ where: { id: menuId } });
+    if (!menu) {
+      throw new NotFoundException(`Menu with ID ${menuId} not found`);
+    }
+    const existing = await this.menuRepository.findOne({
+      where: { publishDate: dto.publishDate },
+    });
+    if (existing && existing.id !== menuId) {
+      throw new BadRequestException(
+        `Menu for date ${dto.publishDate} already exists`,
+      );
+    }
+    menu.publishDate = dto.publishDate;
+    return this.menuRepository.save(menu);
+  }
+
+  async deleteMenu(menuId: string): Promise<{ message: string }> {
+    const menu = await this.menuRepository.findOne({ where: { id: menuId } });
+    if (!menu) {
+      throw new NotFoundException(`Menu with ID ${menuId} not found`);
+    }
+    if (menu.isActive) {
+      throw new BadRequestException('Cannot delete an active menu');
+    }
+    await this.menuRepository.remove(menu);
+    return { message: 'Menu deleted successfully' };
+  }
 }

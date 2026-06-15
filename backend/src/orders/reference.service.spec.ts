@@ -160,7 +160,7 @@ describe('ReferenceService', () => {
       await service.sendPaymentConfirmationSms('order-123', 'REF123');
 
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://api.sandbox.africastalking.com/version1/messaging',
+        'http://api.sandbox.africastalking.com/version1/messaging',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
