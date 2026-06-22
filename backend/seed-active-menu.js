@@ -3,7 +3,7 @@ const { Client } = require('pg');
 const Redis = require('ioredis');
 
 const pgClient = new Client({
-  connectionString: 'postgresql://postgres:159600@localhost:5432/cafeq',
+  connectionString: 'postgresql://postgres:khillon@localhost:5432/cafeq',
 });
 
 const redisClient = new Redis('redis://localhost:6379');

@@ -3,7 +3,7 @@ const { Client } = require('pg');
 const bcrypt = require('bcrypt');
 
 const client = new Client({
-  connectionString: 'postgresql://postgres:159600@localhost:5432/cafeq',
+  connectionString: 'postgresql://postgres:khillon@localhost:5432/cafeq',
 });
 
 async function main() {

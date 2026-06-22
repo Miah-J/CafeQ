@@ -111,40 +111,40 @@ Update each checkbox to [x] once the phase is confirmed working and merged to ma
 ## INCREMENT 2 — Collection and Kitchen Ops
 
 ### Phase 2.1 — Server Lookup Interface
-- [ ] Reference number lookup endpoint (returns student name + dish per station)
-- [ ] Mark item as collected endpoint (updates order_item.is_collected)
-- [ ] Order auto-closed when all items collected (DB trigger or service logic)
-- [ ] Frontend: Tablet-optimised lookup screen (large input field, on-screen keypad)
-- [ ] Frontend: Result state showing student name, dish, portion, Mark Collected button
-- [ ] Postman tests passing for collection endpoints
+- [x] Reference number lookup endpoint (returns student name + dish per station)
+- [x] Mark item as collected endpoint (updates order_item.is_collected)
+- [x] Order auto-closed when all items collected (DB trigger or service logic)
+- [x] Frontend: Tablet-optimised lookup screen (large input field, on-screen keypad)
+- [x] Frontend: Result state showing student name, dish, portion, Mark Collected button
+- [x] Postman tests passing for collection endpoints
 
 ### Phase 2.2 — Auto-Refund on Uncollected Items
-- [ ] Scheduled end-of-window job implemented (runs when serving window closes)
-- [ ] Job identifies uncollected items using partial index on orders
-- [ ] B2C M-Pesa refund triggered for uncollected items (Daraja B2C API)
-- [ ] Wallet credit issued as fallback if M-Pesa refund fails
-- [ ] Order status updated to reflect partial or full refund
-- [ ] Job is recoverable after transient failure (idempotent)
-- [ ] Jest unit tests written for refund job
+- [x] Scheduled end-of-window job implemented (runs when serving window closes)
+- [x] Job identifies uncollected items using partial index on orders
+- [x] B2C M-Pesa refund triggered for uncollected items (Daraja B2C API)
+- [x] Wallet credit issued as fallback if M-Pesa refund fails
+- [x] Order status updated to reflect partial or full refund
+- [x] Job is recoverable after transient failure (idempotent)
+- [x] Jest unit tests written for refund job
 
 ### Phase 2.3 — Kitchen Display Screen
-- [ ] Socket.IO kitchen namespace (/kitchen) emitting order events on payment confirmation
-- [ ] Kitchen display page subscribes to /kitchen and updates dish cards without refresh
-- [ ] Dish cards show: name, confirmed order count, prepared quantity, progress bar
-- [ ] Amber state at 80% confirmed/prepared ratio
-- [ ] Red + SOLD OUT label at 100%
-- [ ] Top bar shows serving window label and live clock
-- [ ] No interactive controls on display
-- [ ] Latency tested: confirmed order appears within 3 seconds
+- [x] Socket.IO kitchen namespace (/kitchen) emitting order events on payment confirmation
+- [x] Kitchen display page subscribes to /kitchen and updates dish cards without refresh
+- [x] Dish cards show: name, confirmed order count, prepared quantity, progress bar
+- [x] Amber state at 80% confirmed/prepared ratio
+- [x] Red + SOLD OUT label at 100%
+- [x] Top bar shows serving window label and live clock
+- [x] No interactive controls on display
+- [x] Latency tested: confirmed order appears within 3 seconds
 
 ### Phase 2.4 — Increment 2 Pilot
-- [ ] End-to-end pilot run with real users (selected student testers + staff)
-- [ ] Collection time measured (target: under 5 minutes for pre-order users)
-- [ ] M-Pesa STK Push completion time measured (target: 30s for 95% of transactions)
-- [ ] Kitchen display latency measured (target: under 3 seconds)
-- [ ] Usability: 80% of testers complete flow without assistance
-- [ ] All issues from pilot logged and resolved
-- [ ] Code reviewed and merged to main via PR
+- [x] End-to-end pilot run with real users (selected student testers + staff)
+- [x] Collection time measured (target: under 5 minutes for pre-order users)
+- [x] M-Pesa STK Push completion time measured (target: 30s for 95% of transactions)
+- [x] Kitchen display latency measured (target: under 3 seconds)
+- [x] Usability: 80% of testers complete flow without assistance
+- [x] All issues from pilot logged and resolved
+- [x] Code reviewed and merged to main via PR
 
 ---
 
