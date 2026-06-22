@@ -46,6 +46,12 @@ export default function KitchenDisplay() {
     }
   }, [router]);
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.push("/login");
+  };
+
   // Live ticking clock
   useEffect(() => {
     const updateTime = () => {
@@ -185,6 +191,15 @@ export default function KitchenDisplay() {
             </span>
             <span className="text-lg font-black text-ink">{currentTime}</span>
           </div>
+
+          <div className="h-10 w-px bg-secondary/20"></div>
+
+          <button
+            onClick={handleLogout}
+            className="rounded border border-primary/30 px-4 py-2 text-xs font-bold text-primary hover:bg-primary/10 transition cursor-pointer"
+          >
+            Log Out
+          </button>
         </div>
       </header>
 
