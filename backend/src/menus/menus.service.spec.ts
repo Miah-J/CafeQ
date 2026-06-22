@@ -4,6 +4,7 @@ import { MenusService } from './menus.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Menu } from './entities/menu.entity';
 import { Dish } from './entities/dish.entity';
+import { OrderItem } from '../orders/entities/order-item.entity';
 import { RedisService } from '../db/redis.service';
 import { BadRequestException } from '@nestjs/common';
 
@@ -11,6 +12,7 @@ describe('MenusService', () => {
   let service: MenusService;
   let menuRepoMock: any;
   let dishRepoMock: any;
+  let orderItemRepoMock: any;
   let redisServiceMock: any;
   let redisClientMock: any;
 
@@ -29,12 +31,17 @@ describe('MenusService', () => {
       remove: jest.fn(),
     };
 
+    orderItemRepoMock = {
+      count: jest.fn(),
+    };
+
     redisClientMock = {
       set: jest.fn(),
       get: jest.fn(),
       incrby: jest.fn(),
       decrby: jest.fn(),
       eval: jest.fn(),
+      del: jest.fn(),
     };
 
     redisServiceMock = {
@@ -46,6 +53,7 @@ describe('MenusService', () => {
         MenusService,
         { provide: getRepositoryToken(Menu), useValue: menuRepoMock },
         { provide: getRepositoryToken(Dish), useValue: dishRepoMock },
+        { provide: getRepositoryToken(OrderItem), useValue: orderItemRepoMock },
         { provide: RedisService, useValue: redisServiceMock },
       ],
     }).compile();
@@ -103,19 +111,26 @@ describe('MenusService', () => {
       expect(dishRepoMock.save).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException if menu is already active', async () => {
+    it('should add a dish to an active menu and set its availability in Redis', async () => {
       menuRepoMock.findOne.mockResolvedValue({
         id: 'menu-123',
         isActive: true,
       });
+      dishRepoMock.create.mockReturnValue({ name: 'Pilau', preparedQuantity: 50 });
+      dishRepoMock.save.mockResolvedValue({ id: 'dish-123', name: 'Pilau', preparedQuantity: 50 });
 
-      await expect(
-        service.addDish('menu-123', {
-          name: 'Pilau',
-          price: 150,
-          preparedQuantity: 50,
-        }),
-      ).rejects.toThrow(BadRequestException);
+      const result = await service.addDish('menu-123', {
+        name: 'Pilau',
+        price: 150,
+        preparedQuantity: 50,
+      });
+
+      expect(result.id).toBe('dish-123');
+      expect(dishRepoMock.save).toHaveBeenCalled();
+      expect(redisClientMock.set).toHaveBeenCalledWith(
+        'dish:availability:dish-123',
+        50,
+      );
     });
   });
 
@@ -304,6 +319,34 @@ describe('MenusService', () => {
         'dish:availability:dish-1',
         5,
       );
+    });
+  });
+
+  describe('deleteDish', () => {
+    it('should delete a dish successfully if it has no orders', async () => {
+      dishRepoMock.findOne.mockResolvedValue({
+        id: 'dish-123',
+        menu: { isActive: true },
+      });
+      orderItemRepoMock.count.mockResolvedValue(0);
+
+      const result = await service.deleteDish('dish-123');
+
+      expect(orderItemRepoMock.count).toHaveBeenCalledWith({ where: { dishId: 'dish-123' } });
+      expect(dishRepoMock.remove).toHaveBeenCalled();
+      expect(redisClientMock.del).toHaveBeenCalledWith('dish:availability:dish-123');
+      expect(result.message).toBe('Dish removed successfully');
+    });
+
+    it('should throw BadRequestException if the dish has already been ordered', async () => {
+      dishRepoMock.findOne.mockResolvedValue({
+        id: 'dish-123',
+        menu: { isActive: true },
+      });
+      orderItemRepoMock.count.mockResolvedValue(5);
+
+      await expect(service.deleteDish('dish-123')).rejects.toThrow(BadRequestException);
+      expect(dishRepoMock.remove).not.toHaveBeenCalled();
     });
   });
 });

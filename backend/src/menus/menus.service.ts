@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Menu } from './entities/menu.entity';
 import { Dish } from './entities/dish.entity';
+import { OrderItem } from '../orders/entities/order-item.entity';
 import { CreateMenuDto, CreateDishDto, UpdateDishDto } from './dto/menus.dto';
 import { RedisService } from '../db/redis.service';
 
@@ -17,6 +18,8 @@ export class MenusService {
     private readonly menuRepository: Repository<Menu>,
     @InjectRepository(Dish)
     private readonly dishRepository: Repository<Dish>,
+    @InjectRepository(OrderItem)
+    private readonly orderItemRepository: Repository<OrderItem>,
     private readonly redisService: RedisService,
   ) {}
 
@@ -41,15 +44,20 @@ export class MenusService {
     if (!menu) {
       throw new NotFoundException(`Menu with ID ${menuId} not found`);
     }
-    if (menu.isActive) {
-      throw new BadRequestException('Cannot add dishes to an active menu');
-    }
     const dish = this.dishRepository.create({
       ...dto,
       menuId,
       isSoldOut: false,
     });
-    return this.dishRepository.save(dish);
+    const savedDish = await this.dishRepository.save(dish);
+
+    if (menu.isActive) {
+      const redis = this.redisService.getClient();
+      const key = `dish:availability:${savedDish.id}`;
+      await redis.set(key, savedDish.preparedQuantity);
+    }
+
+    return savedDish;
   }
 
   async editDish(dishId: string, dto: UpdateDishDto): Promise<Dish> {
@@ -89,10 +97,24 @@ export class MenusService {
     if (!dish) {
       throw new NotFoundException(`Dish with ID ${dishId} not found`);
     }
-    if (dish.menu.isActive) {
-      throw new BadRequestException('Cannot delete dishes from an active menu');
+
+    // Check if the dish has already been ordered by counting references in order_items
+    const orderCount = await this.orderItemRepository.count({
+      where: { dishId },
+    });
+    if (orderCount > 0) {
+      throw new BadRequestException(
+        'Cannot delete a dish that has already been ordered. Please flag it as sold out instead.',
+      );
     }
+
     await this.dishRepository.remove(dish);
+
+    if (dish.menu.isActive) {
+      const redis = this.redisService.getClient();
+      await redis.del(`dish:availability:${dish.id}`);
+    }
+
     return { message: 'Dish removed successfully' };
   }
 

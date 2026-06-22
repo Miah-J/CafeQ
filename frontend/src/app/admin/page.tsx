@@ -597,14 +597,12 @@ export default function AdminDashboard() {
                         <h4 className="text-xs font-bold uppercase tracking-wider text-secondary">
                           Dishes List ({menu.dishes.length})
                         </h4>
-                        {!menu.isActive && (
-                          <button
-                            onClick={() => openAddDishModal(menu.id)}
-                            className="bg-white border border-secondary/35 text-secondary text-[10px] font-bold px-3 py-1.5 rounded hover:bg-secondary/5 transition cursor-pointer"
-                          >
-                            + Add Dish
-                          </button>
-                        )}
+                        <button
+                          onClick={() => openAddDishModal(menu.id)}
+                          className="bg-white border border-secondary/35 text-secondary text-[10px] font-bold px-3 py-1.5 rounded hover:bg-secondary/5 transition cursor-pointer"
+                        >
+                          + Add Dish
+                        </button>
                       </div>
 
                       {menu.dishes.length === 0 ? (
@@ -639,34 +637,32 @@ export default function AdminDashboard() {
                                 </div>
 
                                 {/* Dish Actions */}
-                                {!menu.isActive && (
-                                  <div className="flex items-center gap-2 mt-3 pt-2 border-t border-secondary/5">
+                                <div className="flex items-center justify-between mt-3 pt-2 border-t border-secondary/5">
+                                  <div className="flex items-center gap-2">
                                     <button
                                       onClick={() => openEditDishModal(menu.id, dish)}
-                                      className="text-[10px] font-bold text-secondary hover:text-primary transition"
+                                      className="text-[10px] font-bold text-secondary hover:text-primary transition cursor-pointer"
                                     >
                                       Edit
                                     </button>
                                     <span className="text-secondary/30">|</span>
                                     <button
                                       onClick={() => handleDeleteDish(dish.id)}
-                                      className="text-[10px] font-bold text-status-sold-out/85 hover:text-status-sold-out transition"
+                                      className="text-[10px] font-bold text-status-sold-out/85 hover:text-status-sold-out transition cursor-pointer"
                                     >
                                       Remove
                                     </button>
                                   </div>
-                                )}
 
-                                {menu.isActive && !dish.isSoldOut && (
-                                  <div className="mt-3 pt-2 border-t border-secondary/5 text-right">
+                                  {menu.isActive && !dish.isSoldOut && (
                                     <button
                                       onClick={() => handleMarkSoldOut(dish.id)}
                                       className="text-[9px] font-bold bg-status-sold-out/10 border border-status-sold-out/30 text-status-sold-out px-2 py-1 rounded hover:bg-status-sold-out/20 transition cursor-pointer"
                                     >
                                       Flag Sold Out
                                     </button>
-                                  </div>
-                                )}
+                                  )}
+                                </div>
                               </div>
                             </div>
                           ))}
