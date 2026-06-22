@@ -716,6 +716,7 @@ export default function AdminDashboard() {
                     >
                       <option value="Cashier">Cashier</option>
                       <option value="ServingStaff">Serving Staff</option>
+                      <option value="KitchenStaff">Kitchen Staff</option>
                       <option value="Admin">Administrator</option>
                     </select>
                   </div>
@@ -819,6 +820,10 @@ export default function AdminDashboard() {
                 <li>
                   <strong className="text-ink block mb-1">Serving Staff</strong>
                   Operates the lookup station at the pick-up counter. Verifies pre-order reference codes and marks orders as collected.
+                </li>
+                <li>
+                  <strong className="text-ink block mb-1">Kitchen Staff</strong>
+                  Operates the Kitchen Display screen. Views incoming prep queues, marks dishes prepare counts, and monitors active items.
                 </li>
                 <li>
                   <strong className="text-ink block mb-1">Administrator</strong>

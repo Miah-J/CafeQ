@@ -40,6 +40,8 @@ export default function Login() {
         router.push("/server");
       } else if (data.user.role === "Admin") {
         router.push("/admin");
+      } else if (data.user.role === "KitchenStaff") {
+        router.push("/kitchen");
       } else {
         router.push("/menu");
       }
