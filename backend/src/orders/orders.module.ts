@@ -11,6 +11,7 @@ import { Dish } from '../menus/entities/dish.entity';
 import { MenusModule } from '../menus/menus.module';
 import { UsersModule } from '../users/users.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { KitchenModule } from '../kitchen/kitchen.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { PaymentsModule } from '../payments/payments.module';
     ]),
     MenusModule,
     UsersModule,
+    KitchenModule,
     forwardRef(() => PaymentsModule),
   ],
   controllers: [OrdersController],

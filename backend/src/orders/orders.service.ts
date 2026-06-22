@@ -16,6 +16,7 @@ import { Payment } from '../payments/entities/payment.entity';
 import { UsersService } from '../users/users.service';
 import { ReferenceService } from './reference.service';
 import { PaymentsService } from '../payments/payments.service';
+import { KitchenService } from '../kitchen/kitchen.service';
 
 @Injectable()
 export class OrdersService {
@@ -34,6 +35,7 @@ export class OrdersService {
     private readonly referenceService: ReferenceService,
     @Inject(forwardRef(() => PaymentsService))
     private readonly paymentsService: PaymentsService,
+    private readonly kitchenService: KitchenService,
   ) {}
 
   async createOrder(
@@ -237,6 +239,14 @@ export class OrdersService {
             ref.referenceCode,
           );
         }
+
+        // Trigger kitchen updates
+        if (savedOrder.items) {
+          for (const item of savedOrder.items) {
+            void this.kitchenService.triggerDishUpdate(item.dishId);
+          }
+        }
+
         return {
           order: savedOrder,
           referenceCode: ref.referenceCode,

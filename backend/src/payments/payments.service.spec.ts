@@ -10,6 +10,7 @@ import { MenusService } from '../menus/menus.service';
 import { ConfigService } from '@nestjs/config';
 import { ReferenceService } from '../orders/reference.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { KitchenService } from '../kitchen/kitchen.service';
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
@@ -20,6 +21,7 @@ describe('PaymentsService', () => {
   let menusServiceMock: any;
   let configServiceMock: any;
   let referenceServiceMock: any;
+  let kitchenServiceMock: any;
 
   beforeEach(async () => {
     paymentRepoMock = {
@@ -55,6 +57,10 @@ describe('PaymentsService', () => {
       sendPaymentConfirmationSms: jest.fn(() => Promise.resolve()),
     };
 
+    kitchenServiceMock = {
+      triggerDishUpdate: jest.fn(),
+    };
+
     configServiceMock = {
       get: jest.fn((key: string) => {
         if (key === 'mpesa.callbackUrl')
@@ -77,6 +83,7 @@ describe('PaymentsService', () => {
         { provide: MenusService, useValue: menusServiceMock },
         { provide: ConfigService, useValue: configServiceMock },
         { provide: ReferenceService, useValue: referenceServiceMock },
+        { provide: KitchenService, useValue: kitchenServiceMock },
       ],
     }).compile();
 

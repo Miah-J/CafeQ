@@ -8,12 +8,14 @@ import { PaymentsController } from './payments.controller';
 import { UsersModule } from '../users/users.module';
 import { MenusModule } from '../menus/menus.module';
 import { OrdersModule } from '../orders/orders.module';
+import { KitchenModule } from '../kitchen/kitchen.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Payment, Order, Wallet]),
     UsersModule,
     MenusModule,
+    KitchenModule,
     forwardRef(() => OrdersModule),
   ],
   controllers: [PaymentsController],

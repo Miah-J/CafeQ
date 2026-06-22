@@ -11,6 +11,7 @@ import { UsersService } from '../users/users.service';
 import { ReferenceService } from './reference.service';
 import { PaymentsService } from '../payments/payments.service';
 import { DataSource } from 'typeorm';
+import { KitchenService } from '../kitchen/kitchen.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('OrdersService', () => {
@@ -24,6 +25,7 @@ describe('OrdersService', () => {
   let referenceServiceMock: any;
   let paymentsServiceMock: any;
   let dataSourceMock: any;
+  let kitchenServiceMock: any;
   let managerMock: any;
   let queryRunnerMock: any;
 
@@ -56,6 +58,10 @@ describe('OrdersService', () => {
       ),
     };
 
+    kitchenServiceMock = {
+      triggerDishUpdate: jest.fn(),
+    };
+
     managerMock = {
       findOne: jest.fn(),
       save: jest.fn(),
@@ -86,6 +92,7 @@ describe('OrdersService', () => {
         { provide: UsersService, useValue: usersServiceMock },
         { provide: ReferenceService, useValue: referenceServiceMock },
         { provide: PaymentsService, useValue: paymentsServiceMock },
+        { provide: KitchenService, useValue: kitchenServiceMock },
       ],
     }).compile();
 

@@ -13,6 +13,7 @@ import { Order } from '../orders/entities/order.entity';
 import { UsersService } from '../users/users.service';
 import { MenusService } from '../menus/menus.service';
 import { ReferenceService } from '../orders/reference.service';
+import { KitchenService } from '../kitchen/kitchen.service';
 
 export interface MpesaCallbackItem {
   Name: string;
@@ -52,6 +53,7 @@ export class PaymentsService {
     private readonly usersService: UsersService,
     private readonly menusService: MenusService,
     private readonly referenceService: ReferenceService,
+    private readonly kitchenService: KitchenService,
   ) {}
 
   private formatPhoneNumber(phone: string): string {
@@ -439,6 +441,13 @@ export class PaymentsService {
           ref.referenceCode,
         );
 
+        // Trigger kitchen monitor updates
+        if (order.items) {
+          for (const item of order.items) {
+            void this.kitchenService.triggerDishUpdate(item.dishId);
+          }
+        }
+
         return { status: 'SUCCESS', referenceCode: ref.referenceCode };
       } else if (balance > 0) {
         // Split Payment: Wallet covers 'balance', M-Pesa covers the remainder
@@ -607,6 +616,13 @@ export class PaymentsService {
           ref.referenceCode,
         );
 
+        // Trigger kitchen monitor updates
+        if (order.items) {
+          for (const item of order.items) {
+            void this.kitchenService.triggerDishUpdate(item.dishId);
+          }
+        }
+
         return { status: 'SUCCESS', referenceCode: ref.referenceCode };
       } else {
         await this.triggerStkPush(orderId, userId);
@@ -670,6 +686,13 @@ export class PaymentsService {
             order.id,
             ref.referenceCode,
           );
+
+          // Trigger kitchen monitor updates
+          if (order.items) {
+            for (const item of order.items) {
+              void this.kitchenService.triggerDishUpdate(item.dishId);
+            }
+          }
         }
       } else if (payment.userId) {
         // Wallet Top-Up!
@@ -788,6 +811,75 @@ export class PaymentsService {
       transactionReference: payment.transactionReference,
       referenceCode: ref ? ref.referenceCode : null,
     };
+  }
+
+  async triggerB2cRefund(
+    userId: string,
+    amount: number,
+    orderId: string,
+  ): Promise<{ success: boolean; transactionId?: string; error?: string }> {
+    const user = await this.usersService.findById(userId);
+    if (!user || !user.phoneNumber) {
+      return { success: false, error: 'User does not have a registered phone number' };
+    }
+
+    const formattedPhone = this.formatPhoneNumber(user.phoneNumber);
+
+    if (this.isMockMode()) {
+      this.logger.warn(`Entering M-Pesa B2C Refund Simulation for order: ${orderId}, amount: ${amount}`);
+      const mockB2cReceipt = `B2C_MOCK_${Date.now()}`;
+      return { success: true, transactionId: mockB2cReceipt };
+    }
+
+    try {
+      const token = await this.getAccessToken();
+      const b2cShortcode = this.configService.get<string>('mpesa.b2cShortcode') || '600192';
+      const initiatorName = this.configService.get<string>('mpesa.initiatorName') || 'testapi';
+      const securityCredential = this.configService.get<string>('mpesa.securityCredential') || 'mock_credential';
+      const callbackUrl = this.configService.get<string>('mpesa.b2cCallbackUrl') || this.configService.get<string>('mpesa.callbackUrl');
+
+      const payload = {
+        InitiatorName: initiatorName,
+        SecurityCredential: securityCredential,
+        CommandID: 'BusinessPayment',
+        Amount: Math.round(amount),
+        PartyA: b2cShortcode,
+        PartyB: formattedPhone,
+        Remarks: `Refund for uncollected items in order ${orderId.substring(0, 8)}`,
+        QueueTimeOutURL: callbackUrl,
+        ResultURL: callbackUrl,
+        Occasion: 'Refund',
+      };
+
+      const res = await this.fetchWithRetry(
+        'https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        this.logger.error(`Daraja B2C Transfer Request Failed: ${errText}`);
+        return { success: false, error: 'Daraja B2C request failed' };
+      }
+
+      const data = (await res.json()) as { ConversationID?: string; OriginatorConversationID?: string; ResponseCode?: string };
+      if (data.ResponseCode === '0') {
+        return { success: true, transactionId: data.ConversationID };
+      } else {
+        return { success: false, error: 'Daraja B2C rejected request' };
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to execute B2C M-Pesa refund: ${errMsg}`);
+      return { success: false, error: errMsg };
+    }
   }
 
   private async fetchWithRetry(
