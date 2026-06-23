@@ -151,49 +151,49 @@ Update each checkbox to [x] once the phase is confirmed working and merged to ma
 ## INCREMENT 3 — Intelligence and Loyalty
 
 ### Phase 3.1 — Loyalty Points Module
-- [ ] loyalty_accounts table confirmed with DB trigger crediting on COLLECTED
-- [ ] 1 point per KES 10 rule enforced (floor rounding)
-- [ ] Minimum 50 points balance to redeem enforced
-- [ ] Max 30% of order total per redemption enforced
-- [ ] Max 3 redemptions per calendar day per account enforced
-- [ ] No transfers between accounts enforced
-- [ ] Partial refund deduction logic (deduct points for refunded items, freeze on negative balance)
-- [ ] Frontend: Loyalty balance, transaction history, next threshold in student app
-- [ ] Admin dashboard: Programme-wide loyalty stats (issued, redeemed, eligible accounts)
-- [ ] Jest unit tests written for LoyaltyService
+- [x] loyalty_accounts table confirmed with DB trigger crediting on COLLECTED
+- [x] 1 point per KES 10 rule enforced (floor rounding)
+- [x] Minimum 50 points balance to redeem enforced
+- [x] Max 30% of order total per redemption enforced
+- [x] Max 3 redemptions per calendar day per account enforced
+- [x] No transfers between accounts enforced
+- [x] Partial refund deduction logic (deduct points for refunded items, freeze on negative balance)
+- [x] Frontend: Loyalty balance, transaction history, next threshold in student app
+- [x] Admin dashboard: Programme-wide loyalty stats (issued, redeemed, eligible accounts)
+- [x] Jest unit tests written for LoyaltyService
 
 ### Phase 3.2 — Demand Forecasting Microservice
-- [ ] FastAPI Python microservice scaffold created
-- [ ] Historical order data retrieval from PostgreSQL (by dish, day of week, time slot)
-- [ ] Feature engineering: campus calendar events, timetable headcount, weather API integration
-- [ ] scikit-learn regression model training script (weekly retraining)
-- [ ] Inference endpoint returning recommended prep quantities per dish
-- [ ] NestJS HTTP client service calling forecasting microservice
-- [ ] Model output written to dashboard before each serving window opens
-- [ ] Microservice independently deployable without touching NestJS app
+- [x] FastAPI Python microservice scaffold created
+- [x] Historical order data retrieval from PostgreSQL (by dish, day of week, time slot)
+- [x] Feature engineering: campus calendar events, timetable headcount, weather API integration
+- [x] scikit-learn regression model training script (weekly retraining)
+- [x] Inference endpoint returning recommended prep quantities per dish
+- [x] NestJS HTTP client service calling forecasting microservice
+- [x] Model output written to dashboard before each serving window opens
+- [x] Microservice independently deployable without touching NestJS app
 
 ### Phase 3.3 — Management Dashboard
-- [ ] Live revenue endpoint (total, by dish)
-- [ ] Total orders placed and collected endpoint
-- [ ] Dish demand table endpoint (forecasted qty, prepared qty, confirmed orders, collection rate)
-- [ ] Low-stock alert endpoint (dishes at or over prepared quantity, with timestamps)
-- [ ] Admin can adjust prepared quantity and mark dish unavailable from dashboard
-- [ ] Preparation recommendations panel wired to forecasting microservice output
-- [ ] CSV export endpoint (full day order and revenue data)
-- [ ] Frontend: Dashboard with Overview / Menu Management / Reports / Loyalty tabs
-- [ ] Frontend: Dish demand table with amber highlight rows at >80%
-- [ ] Frontend: Low-stock alert panel with timestamps
-- [ ] Frontend: Export to CSV button
+- [x] Live revenue endpoint (total, by dish)
+- [x] Total orders placed and collected endpoint
+- [x] Dish demand table endpoint (forecasted qty, prepared qty, confirmed orders, collection rate)
+- [x] Low-stock alert endpoint (dishes at or over prepared quantity, with timestamps)
+- [x] Admin can adjust prepared quantity and mark dish unavailable from dashboard
+- [x] Preparation recommendations panel wired to forecasting microservice output
+- [x] CSV export endpoint (full day order and revenue data)
+- [x] Frontend: Dashboard with Overview / Menu Management / Reports / Loyalty tabs
+- [x] Frontend: Dish demand table with amber highlight rows at >80%
+- [x] Frontend: Low-stock alert panel with timestamps
+- [x] Frontend: Export to CSV button
 
 ### Phase 3.4 — Full System Integration Test & UAT
-- [ ] All three increments tested together end-to-end
-- [ ] All performance targets verified against measurements
-- [ ] All Postman tests green across all increments
-- [ ] All Jest tests green
-- [ ] Security audit: role-based access verified for every endpoint
-- [ ] Audit logs confirmed active on payment and personal data tables
-- [ ] Data Protection Act 2019 compliance checklist completed
-- [ ] Final UAT session with cafeteria staff and student group
-- [ ] All UAT issues resolved
-- [ ] Final code reviewed and merged to main
+- [x] All three increments tested together end-to-end
+- [x] All performance targets verified against measurements
+- [x] All Postman tests green across all increments
+- [x] All Jest tests green
+- [x] Security audit: role-based access verified for every endpoint
+- [x] Audit logs confirmed active on payment and personal data tables
+- [x] Data Protection Act 2019 compliance checklist completed
+- [x] Final UAT session with cafeteria staff and student group
+- [x] All UAT issues resolved
+- [x] Final code reviewed and merged to main
 - [ ] Dissertation write-up of Chapter 5 (Implementation) can begin
