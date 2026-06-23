@@ -12,6 +12,7 @@ import { MenusModule } from '../menus/menus.module';
 import { UsersModule } from '../users/users.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { KitchenModule } from '../kitchen/kitchen.module';
+import { LoyaltyModule } from '../loyalty/loyalty.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { KitchenModule } from '../kitchen/kitchen.module';
     MenusModule,
     UsersModule,
     KitchenModule,
+    LoyaltyModule,
     forwardRef(() => PaymentsModule),
   ],
   controllers: [OrdersController],

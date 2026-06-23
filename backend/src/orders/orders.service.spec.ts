@@ -13,6 +13,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { DataSource } from 'typeorm';
 import { KitchenService } from '../kitchen/kitchen.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -28,6 +29,7 @@ describe('OrdersService', () => {
   let kitchenServiceMock: any;
   let managerMock: any;
   let queryRunnerMock: any;
+  let loyaltyServiceMock: any;
 
   beforeEach(async () => {
     orderRepoMock = {
@@ -62,6 +64,11 @@ describe('OrdersService', () => {
       triggerDishUpdate: jest.fn(),
     };
 
+    loyaltyServiceMock = {
+      checkRedemptionEligibility: jest.fn().mockResolvedValue(true),
+      redeemPoints: jest.fn(),
+    };
+
     managerMock = {
       findOne: jest.fn(),
       save: jest.fn(),
@@ -93,6 +100,7 @@ describe('OrdersService', () => {
         { provide: ReferenceService, useValue: referenceServiceMock },
         { provide: PaymentsService, useValue: paymentsServiceMock },
         { provide: KitchenService, useValue: kitchenServiceMock },
+        { provide: LoyaltyService, useValue: loyaltyServiceMock },
       ],
     }).compile();
 

@@ -17,6 +17,7 @@ import { UsersService } from '../users/users.service';
 import { ReferenceService } from './reference.service';
 import { PaymentsService } from '../payments/payments.service';
 import { KitchenService } from '../kitchen/kitchen.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 @Injectable()
 export class OrdersService {
@@ -36,6 +37,7 @@ export class OrdersService {
     @Inject(forwardRef(() => PaymentsService))
     private readonly paymentsService: PaymentsService,
     private readonly kitchenService: KitchenService,
+    private readonly loyaltyService: LoyaltyService,
   ) {}
 
   async createOrder(
@@ -99,7 +101,33 @@ export class OrdersService {
       dbOrder.totalAmount = totalAmount;
       dbOrder.items = orderItemsToSave;
 
+      let pointsToRedeem = 0;
+      if (dto.pointsToRedeem && dto.pointsToRedeem > 0) {
+        if (!userId) {
+          throw new BadRequestException('Anonymous users cannot redeem loyalty points');
+        }
+        await this.loyaltyService.checkRedemptionEligibility(
+          userId,
+          dto.pointsToRedeem,
+          totalAmount,
+          queryRunner.manager,
+        );
+        pointsToRedeem = dto.pointsToRedeem;
+      }
+
+      dbOrder.pointsRedeemed = pointsToRedeem;
+      dbOrder.totalAmount = totalAmount - pointsToRedeem;
+
       const savedOrder = await queryRunner.manager.save(Order, dbOrder);
+
+      if (pointsToRedeem > 0 && userId) {
+        await this.loyaltyService.redeemPoints(
+          userId,
+          pointsToRedeem,
+          savedOrder.id,
+          queryRunner.manager,
+        );
+      }
 
       await queryRunner.commitTransaction();
 

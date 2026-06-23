@@ -24,11 +24,22 @@ describe('MenusService', () => {
       update: jest.fn(),
     };
 
+    const executeMock = jest.fn().mockResolvedValue({ affected: 1 });
+    const whereMock = jest.fn().mockImplementation(() => ({ execute: executeMock }));
+    const setMock = jest.fn().mockImplementation(() => ({ where: whereMock }));
+    const updateMock = jest.fn().mockImplementation(() => ({ set: setMock }));
+
     dishRepoMock = {
       create: jest.fn(),
       save: jest.fn(),
       findOne: jest.fn(),
       remove: jest.fn(),
+      createQueryBuilder: jest.fn().mockImplementation(() => ({
+        update: updateMock,
+        set: setMock,
+        where: whereMock,
+        execute: executeMock,
+      })),
     };
 
     orderItemRepoMock = {

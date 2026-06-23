@@ -42,6 +42,12 @@ export class Dish {
   @Column({ name: 'image_url', type: 'varchar', length: 500, nullable: true })
   imageUrl: string | null;
 
+  @Column({ name: 'low_stock_at', type: 'timestamp with time zone', nullable: true })
+  lowStockAt: Date | null;
+
+  @Column({ name: 'sold_out_at', type: 'timestamp with time zone', nullable: true })
+  soldOutAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
   createdAt: Date;
 

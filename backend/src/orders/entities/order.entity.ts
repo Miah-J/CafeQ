@@ -24,6 +24,9 @@ export class Order {
   @Column({ default: 'PENDING' })
   status: string; // PENDING, CONFIRMED, PARTIALLY_COLLECTED, COLLECTED, REFUNDED
 
+  @Column({ name: 'points_redeemed', type: 'integer', default: 0 })
+  pointsRedeemed: number;
+
   @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
   items: OrderItem[];
 

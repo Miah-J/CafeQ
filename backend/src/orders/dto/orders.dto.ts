@@ -24,6 +24,11 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  pointsToRedeem?: number;
 }
 
 export class CreateCashierOrderDto {

@@ -136,6 +136,11 @@ export class MenusService {
     for (const dish of menu.dishes) {
       const key = `dish:availability:${dish.id}`;
       await redis.set(key, dish.isSoldOut ? 0 : dish.preparedQuantity);
+
+      // Clear low stock and sold out timestamps on publish
+      dish.lowStockAt = null;
+      dish.soldOutAt = null;
+      await this.dishRepository.save(dish);
     }
 
     return savedMenu;
@@ -151,6 +156,7 @@ export class MenusService {
     }
 
     dish.isSoldOut = true;
+    dish.soldOutAt = new Date();
     const savedDish = await this.dishRepository.save(dish);
 
     if (dish.menu.isActive) {
@@ -210,6 +216,31 @@ export class MenusService {
     };
   }
 
+  private async updateThresholdTimestamps(dishId: string, remainingQty: number) {
+    if (remainingQty <= 0) {
+      await this.dishRepository
+        .createQueryBuilder()
+        .update(Dish)
+        .set({ soldOutAt: new Date(), isSoldOut: true })
+        .where('id = :id AND sold_out_at IS NULL', { id: dishId })
+        .execute();
+    } else if (remainingQty <= 15) {
+      await this.dishRepository
+        .createQueryBuilder()
+        .update(Dish)
+        .set({ lowStockAt: new Date(), soldOutAt: null, isSoldOut: false })
+        .where('id = :id AND low_stock_at IS NULL', { id: dishId })
+        .execute();
+    } else {
+      await this.dishRepository
+        .createQueryBuilder()
+        .update(Dish)
+        .set({ lowStockAt: null, soldOutAt: null, isSoldOut: false })
+        .where('id = :id', { id: dishId })
+        .execute();
+    }
+  }
+
   async reservePortions(dishId: string, quantity: number): Promise<number> {
     const redis = this.redisService.getClient();
     const key = `dish:availability:${dishId}`;
@@ -255,6 +286,7 @@ export class MenusService {
           `Insufficient portions left for dish: ${dish.name}`,
         );
       }
+      await this.updateThresholdTimestamps(dishId, retryCode);
       return retryCode;
     }
 
@@ -266,6 +298,7 @@ export class MenusService {
       );
     }
 
+    await this.updateThresholdTimestamps(dishId, code);
     return code;
   }
 
@@ -273,6 +306,7 @@ export class MenusService {
     const redis = this.redisService.getClient();
     const key = `dish:availability:${dishId}`;
     const result = await redis.incrby(key, quantity);
+    await this.updateThresholdTimestamps(dishId, result);
     return result;
   }
 
