@@ -12,6 +12,9 @@ import { PaymentsModule } from './payments/payments.module';
 import { CollectionModule } from './collection/collection.module';
 import { KitchenModule } from './kitchen/kitchen.module';
 import { RefundModule } from './refund/refund.module';
+import { LoyaltyModule } from './loyalty/loyalty.module';
+import { ForecastingModule } from './forecasting/forecasting.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -31,6 +34,9 @@ import configuration from './config/configuration';
     CollectionModule,
     KitchenModule,
     RefundModule,
+    LoyaltyModule,
+    ForecastingModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
