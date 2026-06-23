@@ -14,6 +14,7 @@ import { UsersService } from '../users/users.service';
 import { MenusService } from '../menus/menus.service';
 import { ReferenceService } from '../orders/reference.service';
 import { KitchenService } from '../kitchen/kitchen.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 export interface MpesaCallbackItem {
   Name: string;
@@ -54,7 +55,8 @@ export class PaymentsService {
     private readonly menusService: MenusService,
     private readonly referenceService: ReferenceService,
     private readonly kitchenService: KitchenService,
-  ) {}
+    private readonly loyaltyService: LoyaltyService,
+  ) { }
 
   private formatPhoneNumber(phone: string): string {
     const cleaned = phone.replace(/\D/g, '');
@@ -719,6 +721,23 @@ export class PaymentsService {
         if (order) {
           order.status = 'FAILED';
           await this.orderRepository.save(order);
+
+          // Restore loyalty points if any were redeemed
+          if (order.pointsRedeemed > 0 && order.userId) {
+            try {
+              await this.loyaltyService.restorePoints(
+                order.userId,
+                order.pointsRedeemed,
+                order.id,
+              );
+              this.logger.log(
+                `Loyalty points restored: ${order.pointsRedeemed} back to user ${order.userId}`,
+              );
+            } catch (err) {
+              const errMsg = err instanceof Error ? err.message : String(err);
+              this.logger.error(`Failed to restore loyalty points: ${errMsg}`);
+            }
+          }
 
           // Rollback Redis Portions
           for (const item of order.items) {

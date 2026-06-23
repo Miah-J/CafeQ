@@ -7,6 +7,7 @@ import { OrderItem } from '../orders/entities/order-item.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Wallet } from '../payments/entities/wallet.entity';
 import { PaymentsService } from '../payments/payments.service';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 @Injectable()
 export class RefundService {
@@ -23,6 +24,7 @@ export class RefundService {
     private readonly walletRepository: Repository<Wallet>,
     private readonly paymentsService: PaymentsService,
     private readonly dataSource: DataSource,
+    private readonly loyaltyService: LoyaltyService,
   ) {}
 
   // Runs at 2:00 PM every day Monday through Friday (Strathmore lunch window close)
@@ -163,6 +165,43 @@ export class RefundService {
           dbOrder.status = 'REFUNDED';
         } else if (hasCollected && hasRefunded) {
           dbOrder.status = 'PARTIALLY_REFUNDED';
+        }
+
+        // Apply loyalty points logic
+        if (orderRefundTotal > 0 && dbOrder.userId) {
+          if (dbOrder.status === 'PARTIALLY_REFUNDED') {
+            const collectedItems = dbOrder.items.filter((i) => i.status === 'COLLECTED');
+            const collectedTotal = collectedItems.reduce((sum, i) => sum + Number(i.unitPrice) * i.quantity, 0);
+            const totalPreDiscount = Number(dbOrder.totalAmount) + dbOrder.pointsRedeemed;
+            const collectedRatio = totalPreDiscount > 0 ? collectedTotal / totalPreDiscount : 0;
+            const netCollectedAmount = collectedTotal - (dbOrder.pointsRedeemed * collectedRatio);
+            const pointsToCredit = Math.floor(netCollectedAmount / 10);
+            if (pointsToCredit > 0) {
+              await this.loyaltyService.creditPointsForCollection(
+                dbOrder.userId,
+                pointsToCredit,
+                dbOrder.id,
+                queryRunner.manager,
+              );
+            }
+          } else {
+            // If the order status was already COLLECTED, trigger has fired and credited full points.
+            // We need to deduct points for the refunded items.
+            if (order.status === 'COLLECTED') {
+              const totalPreDiscount = Number(dbOrder.totalAmount) + dbOrder.pointsRedeemed;
+              const refundedRatio = totalPreDiscount > 0 ? orderRefundTotal / totalPreDiscount : 0;
+              const netRefundedAmount = orderRefundTotal - (dbOrder.pointsRedeemed * refundedRatio);
+              const pointsToDeduct = Math.floor(netRefundedAmount / 10);
+              if (pointsToDeduct > 0) {
+                await this.loyaltyService.deductPointsForRefund(
+                  dbOrder.userId,
+                  pointsToDeduct,
+                  dbOrder.id,
+                  queryRunner.manager,
+                );
+              }
+            }
+          }
         }
 
         await queryRunner.manager.save(Order, dbOrder);

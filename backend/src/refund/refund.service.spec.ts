@@ -7,6 +7,7 @@ import { Payment } from '../payments/entities/payment.entity';
 import { Wallet } from '../payments/entities/wallet.entity';
 import { PaymentsService } from '../payments/payments.service';
 import { DataSource } from 'typeorm';
+import { LoyaltyService } from '../loyalty/loyalty.service';
 
 describe('RefundService', () => {
   let service: RefundService;
@@ -18,6 +19,7 @@ describe('RefundService', () => {
   let dataSourceMock: any;
   let managerMock: any;
   let queryRunnerMock: any;
+  let loyaltyServiceMock: any;
 
   beforeEach(async () => {
     orderRepoMock = {
@@ -29,6 +31,10 @@ describe('RefundService', () => {
     paymentsServiceMock = {
       triggerB2cRefund: jest.fn(),
       getOrCreateWallet: jest.fn(),
+    };
+
+    loyaltyServiceMock = {
+      deductPointsForRefund: jest.fn(),
     };
 
     managerMock = {
@@ -59,6 +65,7 @@ describe('RefundService', () => {
         { provide: getRepositoryToken(Wallet), useValue: walletRepoMock },
         { provide: PaymentsService, useValue: paymentsServiceMock },
         { provide: DataSource, useValue: dataSourceMock },
+        { provide: LoyaltyService, useValue: loyaltyServiceMock },
       ],
     }).compile();
 
