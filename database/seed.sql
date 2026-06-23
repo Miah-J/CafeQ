@@ -17,3 +17,13 @@ SELECT id, 'Administration'
 FROM users
 WHERE email = 'admin@cafeq.com'
 ON CONFLICT (id) DO NOTHING;
+
+-- Seed KitchenStaff user
+INSERT INTO users (email, password_hash, role, full_name, phone_number)
+VALUES (
+    'kitchen@cafeq.com',
+    '$2b$10$2hZ3FPjrxofK18sCDAhHhePEGwcDWyRG2SyXwHmO8aQzgrAT2VTze', -- password is: admin123
+    'KitchenStaff',
+    pgp_sym_encrypt('Kevin Kitchen', 'your_long_random_pgcrypto_key_here'),
+    pgp_sym_encrypt('0733333333', 'your_long_random_pgcrypto_key_here')
+) ON CONFLICT (email) DO NOTHING;

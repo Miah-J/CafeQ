@@ -2,8 +2,30 @@
 const { Client } = require('pg');
 const bcrypt = require('bcrypt');
 
+const fs = require('fs');
+const path = require('path');
+
+// Load environment variables from root .env if it exists
+const envPath = path.resolve(__dirname, '../.env');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  for (const line of envContent.split('\n')) {
+    const match = line.match(/^\s*([^#=]+)\s*=\s*(.*)$/);
+    if (match) {
+      const key = match[1].trim();
+      let val = match[2].trim();
+      if (val.startsWith('"') && val.endsWith('"')) {
+        val = val.substring(1, val.length - 1);
+      } else if (val.startsWith("'") && val.endsWith("'")) {
+        val = val.substring(1, val.length - 1);
+      }
+      process.env[key] = val;
+    }
+  }
+}
+
 const client = new Client({
-  connectionString: 'postgresql://postgres:khillon@localhost:5432/cafeq',
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:khillon@localhost:5432/cafeq',
 });
 
 async function main() {

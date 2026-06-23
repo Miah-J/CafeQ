@@ -42,3 +42,17 @@ __pycache__/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Machine Learning models & data dumps
+*.pkl
+*.joblib
+*.h5
+*.onnx
+
+# Build and IDE-specific additions
+*.tsbuildinfo
+.vercel/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
