@@ -85,6 +85,21 @@ export default function MenuBrowsing() {
   const [topUpReceipt, setTopUpReceipt] = useState("");
   const [topUpPollIntervalId, setTopUpPollIntervalId] = useState<ReturnType<typeof setInterval> | null>(null);
 
+  // Loyalty states
+  const [loyaltyStatus, setLoyaltyStatus] = useState<{
+    pointsBalance: number;
+    status: string;
+    tier: string;
+    nextTier: string;
+    progressToNextTier: number;
+    redemptionThreshold: number;
+    isEligible: boolean;
+  } | null>(null);
+  const [loyaltyHistory, setLoyaltyHistory] = useState<any[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [pointsToRedeemInput, setPointsToRedeemInput] = useState("");
+  const [redeemError, setRedeemError] = useState("");
+
   const fetchWalletBalance = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -104,6 +119,44 @@ export default function MenuBrowsing() {
     }
   };
 
+  const fetchLoyaltyStatus = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await fetch("http://localhost:3001/loyalty/status", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLoyaltyStatus(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch loyalty status:", err);
+    }
+  };
+
+  const fetchLoyaltyHistory = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await fetch("http://localhost:3001/loyalty/history", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLoyaltyHistory(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch loyalty history:", err);
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
@@ -117,6 +170,7 @@ export default function MenuBrowsing() {
     setUser(parsedUser);
 
     void fetchWalletBalance();
+    void fetchLoyaltyStatus();
 
     const fetchMenu = async () => {
       try {
@@ -356,7 +410,9 @@ export default function MenuBrowsing() {
           items: [],
         });
         setCart([]);
+        setPointsToRedeemInput("");
         void fetchWalletBalance();
+        void fetchLoyaltyStatus();
       } else {
         let pollAttempts = 0;
         const interval = setInterval(async () => {
@@ -388,12 +444,15 @@ export default function MenuBrowsing() {
                   items: [],
                 });
                 setCart([]);
+                setPointsToRedeemInput("");
                 void fetchWalletBalance();
+                void fetchLoyaltyStatus();
               } else if (statusData.status === "FAILED") {
                 clearInterval(interval);
                 setPaymentStatus("FAILED");
                 setPaymentError("Payment failed or was cancelled.");
                 void fetchWalletBalance();
+                void fetchLoyaltyStatus();
               }
             }
           } catch {
@@ -430,6 +489,7 @@ export default function MenuBrowsing() {
             dishId: item.id,
             quantity: item.quantity,
           })),
+          pointsToRedeem: Number(pointsToRedeemInput || 0),
         }),
       });
 
@@ -453,9 +513,10 @@ export default function MenuBrowsing() {
     }
   };
 
+  const pointsToRedeem = Number(pointsToRedeemInput || 0);
   const paymentAmountToPrompt = (useWallet && walletBalance > 0)
-    ? Math.max(0, cartTotal - walletBalance)
-    : cartTotal;
+    ? Math.max(0, (cartTotal - pointsToRedeem) - walletBalance)
+    : (cartTotal - pointsToRedeem);
 
   // Render loading state
   if (loading) {
@@ -526,7 +587,7 @@ export default function MenuBrowsing() {
               Logged in as: <span className="text-primary font-bold">{user.fullName}</span> ({user.role})
             </p>
           )}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 text-xs font-bold">
               <span className="text-secondary font-medium">Wallet:</span>
               <span className="text-primary">KES {walletBalance.toFixed(2)}</span>
@@ -541,9 +602,35 @@ export default function MenuBrowsing() {
                 Top Up
               </button>
             </div>
+
+            {loyaltyStatus && (
+              <div className="flex items-center gap-2 text-xs font-bold border-l border-secondary/20 pl-3">
+                <span className="text-secondary font-medium">Loyalty:</span>
+                <span className="text-primary">{loyaltyStatus.pointsBalance} pts</span>
+                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                  loyaltyStatus.tier === 'Gold' 
+                    ? 'bg-amber-100 text-amber-800 border border-amber-300' 
+                    : loyaltyStatus.tier === 'Silver'
+                    ? 'bg-slate-100 text-slate-800 border border-slate-300'
+                    : 'bg-orange-100 text-orange-800 border border-orange-300'
+                }`}>
+                  {loyaltyStatus.tier}
+                </span>
+                <button
+                  onClick={() => {
+                    void fetchLoyaltyHistory();
+                    setIsHistoryOpen(true);
+                  }}
+                  className="text-primary hover:underline hover:text-accent text-[10px] ml-1 transition"
+                >
+                  History
+                </button>
+              </div>
+            )}
+
             <button
               onClick={handleLogout}
-              className="rounded border border-secondary/30 px-3 py-1 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
+              className="rounded border border-secondary/30 px-3 py-1 text-xs font-bold text-secondary hover:bg-secondary/5 transition ml-2"
             >
               Sign Out
             </button>
@@ -848,9 +935,91 @@ export default function MenuBrowsing() {
               ))}
             </div>
 
-            <div className="flex justify-between text-sm font-bold mb-6">
+            <div className="flex justify-between text-xs text-secondary font-medium mb-2">
+              <span>Subtotal:</span>
+              <span className="font-bold text-ink">KES {cartTotal.toLocaleString()}</span>
+            </div>
+
+            {/* Loyalty points input */}
+            {loyaltyStatus && loyaltyStatus.pointsBalance >= 50 && (
+              <div className="bg-background border border-secondary/20 rounded-[10px] p-4 mb-4 space-y-3">
+                <div className="flex justify-between items-center text-xs font-bold text-ink">
+                  <span>Redeem Loyalty Points (1 pt = KES 1.00)</span>
+                  <span className="text-[10px] text-primary">Available: {loyaltyStatus.pointsBalance} pts</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={pointsToRedeemInput}
+                    onChange={(e) => {
+                      const valStr = e.target.value;
+                      setPointsToRedeemInput(valStr);
+                      const val = Number(valStr);
+                      if (valStr === "") {
+                        setRedeemError("");
+                        return;
+                      }
+                      if (isNaN(val) || val < 0) {
+                        setRedeemError("Invalid points amount.");
+                        return;
+                      }
+                      if (val > 0) {
+                        if (loyaltyStatus.status === "FROZEN") {
+                          setRedeemError("Your loyalty account is frozen.");
+                          return;
+                        }
+                        if (val < 50) {
+                          setRedeemError("Minimum 50 points required to redeem.");
+                          return;
+                        }
+                        if (val > loyaltyStatus.pointsBalance) {
+                          setRedeemError(`Insufficient points. You have ${loyaltyStatus.pointsBalance} points.`);
+                          return;
+                        }
+                        const maxRedeem = Math.floor(cartTotal * 0.3);
+                        if (val > maxRedeem) {
+                          setRedeemError(`Maximum redemption cannot exceed 30% of order (Max: ${maxRedeem} points).`);
+                          return;
+                        }
+                      }
+                      setRedeemError("");
+                    }}
+                    placeholder="Enter points (min 50)"
+                    className="flex-1 rounded border border-secondary/35 bg-transparent px-3 py-1.5 text-xs font-bold text-ink focus:border-primary focus:outline-none"
+                  />
+                  {pointsToRedeemInput && (
+                    <button
+                      onClick={() => {
+                        setPointsToRedeemInput("");
+                        setRedeemError("");
+                      }}
+                      className="rounded border border-secondary/30 px-3 text-xs font-bold text-secondary hover:bg-secondary/5"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {redeemError && (
+                  <p className="text-[10px] text-rose-600 font-semibold">{redeemError}</p>
+                )}
+                {!redeemError && pointsToRedeemInput && (
+                  <p className="text-[10px] text-emerald-600 font-semibold">
+                    ✓ Applied: KES {Number(pointsToRedeemInput).toFixed(2)} discount.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {pointsToRedeem > 0 && !redeemError && (
+              <div className="flex justify-between text-xs text-secondary font-medium mb-4">
+                <span>Loyalty Points Discount:</span>
+                <span className="font-bold text-rose-600">- KES {pointsToRedeem.toLocaleString()}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between text-sm font-bold mb-6 border-t border-secondary/15 pt-3">
               <span>Total Price Due:</span>
-              <span className="text-primary font-extrabold text-base">KES {cartTotal.toLocaleString()}</span>
+              <span className="text-primary font-extrabold text-base">KES {(cartTotal - pointsToRedeem).toLocaleString()}</span>
             </div>
 
             {/* Wallet Selection & Bill Breakdown */}
@@ -873,11 +1042,11 @@ export default function MenuBrowsing() {
 
               <div className="border-t border-secondary/15 pt-3 space-y-2 text-[11px] font-medium">
                 {useWallet ? (
-                  walletBalance >= cartTotal ? (
+                  walletBalance >= (cartTotal - pointsToRedeem) ? (
                     <div className="flex flex-col gap-1">
                       <div className="flex justify-between">
                         <span>Deducted from Wallet:</span>
-                        <span className="font-bold text-emerald-600">- KES {cartTotal.toFixed(2)}</span>
+                        <span className="font-bold text-emerald-600">- KES {(cartTotal - pointsToRedeem).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between font-bold text-xs text-ink mt-1 border-t border-secondary/15 pt-1">
                         <span>Remaining M-Pesa STK:</span>
@@ -895,7 +1064,7 @@ export default function MenuBrowsing() {
                       </div>
                       <div className="flex justify-between font-bold text-xs text-ink mt-1 border-t border-secondary/15 pt-1">
                         <span>Remaining M-Pesa STK:</span>
-                        <span className="text-primary font-extrabold">KES {(cartTotal - walletBalance).toFixed(2)}</span>
+                        <span className="text-primary font-extrabold">KES {((cartTotal - pointsToRedeem) - walletBalance).toFixed(2)}</span>
                       </div>
                       <p className="text-secondary/70 text-[9px] mt-1 font-semibold italic">
                         ⚠ Split Payment: You will receive an M-Pesa prompt for the remaining amount.
@@ -909,7 +1078,7 @@ export default function MenuBrowsing() {
                       </div>
                       <div className="flex justify-between font-bold text-xs text-ink mt-1 border-t border-secondary/15 pt-1">
                         <span>M-Pesa STK Push:</span>
-                        <span className="text-primary font-extrabold">KES {cartTotal.toFixed(2)}</span>
+                        <span className="text-primary font-extrabold">KES {(cartTotal - pointsToRedeem).toFixed(2)}</span>
                       </div>
                       <p className="text-secondary/70 text-[9px] mt-1 font-semibold">
                         Wallet is empty. Full amount paid via M-Pesa.
@@ -920,7 +1089,7 @@ export default function MenuBrowsing() {
                   <div className="flex flex-col gap-1">
                     <div className="flex justify-between font-bold text-xs text-ink">
                       <span>M-Pesa STK Push:</span>
-                      <span className="text-primary font-extrabold">KES {cartTotal.toFixed(2)}</span>
+                      <span className="text-primary font-extrabold">KES {(cartTotal - pointsToRedeem).toFixed(2)}</span>
                     </div>
                     <p className="text-secondary/70 text-[9px] mt-1 font-semibold">
                       Full amount will be paid via M-Pesa STK Push.
@@ -944,7 +1113,7 @@ export default function MenuBrowsing() {
               </button>
               <button
                 onClick={handleCheckout}
-                disabled={checkoutLoading}
+                disabled={checkoutLoading || !!redeemError}
                 className="flex-1 rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition active:scale-[0.98] flex items-center justify-center gap-2"
               >
                 {checkoutLoading ? "Confirming Portions..." : "Confirm & Checkout"}
@@ -1211,6 +1380,66 @@ export default function MenuBrowsing() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Loyalty History Modal */}
+      {isHistoryOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-[10px] border border-secondary/20 bg-white p-6 shadow-xl text-ink max-h-[85vh] flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-secondary/15 pb-4 mb-6">
+                <h3 className="text-base font-bold text-ink tracking-wide">Loyalty Points History</h3>
+                <button
+                  onClick={() => setIsHistoryOpen(false)}
+                  className="text-secondary hover:text-ink text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {loyaltyHistory.length === 0 ? (
+                <div className="text-center py-12 text-secondary text-xs font-medium">
+                  No loyalty transactions found.
+                </div>
+              ) : (
+                <div className="space-y-4 overflow-y-auto max-h-[50vh] pr-1">
+                  {loyaltyHistory.map((tx) => (
+                    <div key={tx.id} className="flex justify-between items-center border-b border-secondary/10 pb-3 text-xs">
+                      <div>
+                        <div className="font-bold text-ink">
+                          {tx.transactionType === 'EARN' ? 'Points Earned' :
+                           tx.transactionType === 'REDEEM' ? 'Points Redeemed' :
+                           tx.transactionType === 'REFUND_DEDUCT' ? 'Points Deducted (Refund)' :
+                           tx.transactionType === 'REFUND_RETURN' ? 'Points Restored (Failed Payment)' : tx.transactionType}
+                        </div>
+                        <div className="text-[10px] text-secondary">
+                          {new Date(tx.createdAt).toLocaleDateString()} at {new Date(tx.createdAt).toLocaleTimeString()}
+                        </div>
+                        {tx.referenceId && (
+                          <div className="text-[9px] text-secondary font-mono mt-1">
+                            Ref ID: {tx.referenceId.slice(0, 8)}...
+                          </div>
+                        )}
+                      </div>
+                      <span className={`font-black text-sm ${tx.amount > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {tx.amount > 0 ? `+${tx.amount}` : tx.amount} pts
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-secondary/15">
+              <button
+                onClick={() => setIsHistoryOpen(false)}
+                className="w-full rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition active:scale-95"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

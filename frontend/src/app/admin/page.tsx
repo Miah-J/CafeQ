@@ -27,7 +27,7 @@ const DIETARY_TAG_OPTIONS = ["Halal", "Vegetarian", "Vegan", "Gluten-Free", "Dai
 export default function AdminDashboard() {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState<"menus" | "staff">("menus");
+  const [activeTab, setActiveTab] = useState<"overview" | "menus" | "reports" | "loyalty" | "staff">("overview");
   
   // Loading & Global Status
   const [globalLoading, setGlobalLoading] = useState(true);
@@ -61,7 +61,162 @@ export default function AdminDashboard() {
   const [department, setDepartment] = useState("");
   const [provisionLoading, setProvisionLoading] = useState(false);
 
-  // Role Guard validation
+  // Analytics and Loyalty Stats Data
+  const [revenueStats, setRevenueStats] = useState<{ totalRevenue: number; salesByDish: Array<{ dishName: string; sales: number }> } | null>(null);
+  const [orderStats, setOrderStats] = useState<{ totalPlaced: number; totalCollected: number; collectionRate: number } | null>(null);
+  const [dishDemand, setDishDemand] = useState<Array<{ dishId: string; name: string; forecastedQty: number; preparedQty: number; confirmedQty: number; remainingQty: number; collectionRate: number }>>([]);
+  const [lowStockAlerts, setLowStockAlerts] = useState<Array<{ dishId: string; name: string; preparedQuantity: number; remainingQuantity: number; lowStockAt: string | null; soldOutAt: string | null; isSoldOut: boolean }>>([]);
+  const [loyaltyStats, setLoyaltyStats] = useState<{ totalPointsIssued: number; totalPointsRedeemed: number; activeAccountsCount: number; frozenAccountsCount: number; eligibleAccountsCount: number } | null>(null);
+
+  // Data Fetchers
+  const fetchAllMenus = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("http://localhost:3001/menus", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMenus(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch menus:", err);
+    } finally {
+      setGlobalLoading(false);
+    }
+  };
+
+  const fetchRevenueStats = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("http://localhost:3001/analytics/revenue", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRevenueStats(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch revenue stats:", err);
+    }
+  };
+
+  const fetchOrderStats = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("http://localhost:3001/analytics/orders", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrderStats(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch order stats:", err);
+    }
+  };
+
+  const fetchDishDemand = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("http://localhost:3001/analytics/dish-demand", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDishDemand(data.dishes || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch dish demand:", err);
+    }
+  };
+
+  const fetchLowStockAlerts = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("http://localhost:3001/analytics/low-stock", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLowStockAlerts(data.alerts || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch low stock alerts:", err);
+    }
+  };
+
+  const fetchLoyaltyStats = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("http://localhost:3001/loyalty/admin/stats", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLoyaltyStats(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch loyalty stats:", err);
+    }
+  };
+
+  const handleApplyForecast = async (dishId: string, recommendedQty: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setError("");
+    setSuccess("");
+    try {
+      const res = await fetch(`http://localhost:3001/menus/dishes/${dishId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ preparedQuantity: recommendedQty }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to adjust prepared quantity.");
+      setSuccess(`Adjusted prepared portions to ${recommendedQty} successfully!`);
+      void fetchDishDemand();
+      void fetchAllMenus();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("http://localhost:3001/analytics/export-csv", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `cafeq_orders_revenue_${new Date().toISOString().split("T")[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setSuccess("CSV exported and downloaded successfully.");
+      } else {
+        setError("Failed to export CSV file.");
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  // Role Guard validation & Data Polling
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     const token = localStorage.getItem("token");
@@ -80,30 +235,24 @@ export default function AdminDashboard() {
         }
       } else {
         setIsAdmin(true);
-        void fetchAllMenus();
+        
+        const loadAll = () => {
+          void fetchAllMenus();
+          void fetchRevenueStats();
+          void fetchOrderStats();
+          void fetchDishDemand();
+          void fetchLowStockAlerts();
+          void fetchLoyaltyStats();
+        };
+        
+        loadAll();
+        const pollInterval = setInterval(loadAll, 5000);
+        return () => clearInterval(pollInterval);
       }
     } catch {
       router.push("/login");
     }
   }, [router]);
-
-  const fetchAllMenus = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    try {
-      const res = await fetch("http://localhost:3001/menus", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMenus(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch menus:", err);
-    } finally {
-      setGlobalLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -434,7 +583,17 @@ export default function AdminDashboard() {
       {/* Sub Bar Tabs */}
       <section className="bg-white border-b border-secondary/20 px-6 py-2">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex space-x-4">
+          <div className="flex space-x-6">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`pb-1 text-sm font-bold border-b-2 transition cursor-pointer ${
+                activeTab === "overview"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-secondary hover:text-ink"
+              }`}
+            >
+              Overview
+            </button>
             <button
               onClick={() => setActiveTab("menus")}
               className={`pb-1 text-sm font-bold border-b-2 transition cursor-pointer ${
@@ -443,7 +602,27 @@ export default function AdminDashboard() {
                   : "border-transparent text-secondary hover:text-ink"
               }`}
             >
-              Daily Menus
+              Menu Management
+            </button>
+            <button
+              onClick={() => setActiveTab("reports")}
+              className={`pb-1 text-sm font-bold border-b-2 transition cursor-pointer ${
+                activeTab === "reports"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-secondary hover:text-ink"
+              }`}
+            >
+              Reports
+            </button>
+            <button
+              onClick={() => setActiveTab("loyalty")}
+              className={`pb-1 text-sm font-bold border-b-2 transition cursor-pointer ${
+                activeTab === "loyalty"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-secondary hover:text-ink"
+              }`}
+            >
+              Loyalty Program
             </button>
             <button
               onClick={() => setActiveTab("staff")}
@@ -456,7 +635,7 @@ export default function AdminDashboard() {
               Provision Accounts
             </button>
           </div>
-          <p className="text-xs text-secondary font-semibold hidden md:block">
+          <p className="text-xs text-secondary font-semibold hidden lg:block">
             Campus: <span className="text-primary font-bold">Strathmore Dining Services</span>
           </p>
         </div>
@@ -474,6 +653,292 @@ export default function AdminDashboard() {
         {success && (
           <div className="mb-6 rounded-[10px] bg-emerald-500/10 border border-emerald-500/30 p-3.5 text-xs text-emerald-600 font-bold">
             {success}
+          </div>
+        )}
+
+        {/* TAB: OVERVIEW */}
+        {activeTab === "overview" && (
+          <div className="space-y-8 animate-in fade-in duration-150">
+            {/* KPI Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Live Revenue</span>
+                <span className="text-2xl font-black text-primary mt-2">
+                  KES {(revenueStats?.totalRevenue || 0).toLocaleString()}
+                </span>
+                <span className="text-[9px] text-secondary font-semibold mt-1">Confirmed & collected orders</span>
+              </div>
+
+              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Total Orders Placed</span>
+                <span className="text-2xl font-black text-ink mt-2">
+                  {orderStats?.totalPlaced || 0}
+                </span>
+                <span className="text-[9px] text-secondary font-semibold mt-1">All states combined</span>
+              </div>
+
+              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Orders Collected</span>
+                <span className="text-2xl font-black text-emerald-600 mt-2">
+                  {orderStats?.totalCollected || 0}
+                </span>
+                <span className="text-[9px] text-secondary font-semibold mt-1">Handed over to students</span>
+              </div>
+
+              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Collection Rate</span>
+                <span className="text-2xl font-black text-primary mt-2">
+                  {orderStats?.collectionRate || 0}%
+                </span>
+                <span className="text-[9px] text-secondary font-semibold mt-1">Target: &gt;95% collection</span>
+              </div>
+            </div>
+
+            {/* Split layout: Preparation Recommendations & Live Low Stock Alerts */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left/Center: Demand Forecasting recommendations */}
+              <div className="lg:col-span-2 rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+                <div className="flex items-center justify-between border-b border-secondary/15 pb-3 mb-4">
+                  <h3 className="text-base font-bold text-ink tracking-wide">
+                    Preparation Recommendations (FastAPI Demand Forecast Model)
+                  </h3>
+                  <span className="text-[9px] font-mono uppercase bg-accent/20 border border-accent text-primary px-2.5 py-1 rounded">
+                    ML-Powered
+                  </span>
+                </div>
+                
+                {dishDemand.length === 0 ? (
+                  <div className="text-center py-12 text-secondary text-xs font-semibold italic">
+                    No active daily menu found. Publish a menu to view forecasting recommendations.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs font-semibold text-secondary">
+                      <thead>
+                        <tr className="border-b border-secondary/10 text-ink uppercase tracking-wider text-[9px]">
+                          <th className="py-3">Dish Name</th>
+                          <th className="py-3 text-center">Current Prep Qty</th>
+                          <th className="py-3 text-center text-primary">Model Forecast</th>
+                          <th className="py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dishDemand.map((dish) => (
+                          <tr key={dish.dishId} className="border-b border-secondary/10 last:border-0">
+                            <td className="py-4 text-ink font-bold">{dish.name}</td>
+                            <td className="py-4 text-center">{dish.preparedQty} portions</td>
+                            <td className="py-4 text-center text-primary font-black text-sm">{dish.forecastedQty} portions</td>
+                            <td className="py-4 text-right">
+                              {dish.preparedQty === dish.forecastedQty ? (
+                                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
+                                  ✓ Aligned
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => handleApplyForecast(dish.dishId, dish.forecastedQty)}
+                                  className="text-[10px] font-bold bg-primary text-white px-2.5 py-1 rounded hover:bg-accent hover:text-ink transition active:scale-95 cursor-pointer"
+                                >
+                                  Apply Forecast
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Live Low-Stock Notifications */}
+              <div className="lg:col-span-1 rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] space-y-4">
+                <h3 className="text-base font-bold text-ink tracking-wide border-b border-secondary/15 pb-3">
+                  Live Stock Alerts
+                </h3>
+
+                {lowStockAlerts.length === 0 ? (
+                  <div className="text-center py-12 text-secondary text-xs font-semibold italic">
+                    ✓ All active menu portions are healthy.
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+                    {lowStockAlerts.map((alert) => {
+                      const isSoldOut = alert.remainingQuantity === 0 || alert.isSoldOut;
+                      return (
+                        <div key={alert.dishId} className={`rounded-[10px] border p-4 flex flex-col justify-between text-xs ${
+                          isSoldOut 
+                            ? 'bg-rose-50 border-rose-200 text-rose-950' 
+                            : 'bg-amber-50 border-amber-200 text-amber-950'
+                        }`}>
+                          <div className="flex justify-between items-start">
+                            <span className="font-bold text-ink text-sm">{alert.name}</span>
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${
+                              isSoldOut 
+                                ? 'bg-rose-100 text-rose-800 border border-rose-300' 
+                                : 'bg-amber-100 text-amber-800 border border-amber-300'
+                            }`}>
+                              {isSoldOut ? 'Sold Out' : 'Low Stock'}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 flex justify-between font-semibold">
+                            <span>Prepared: {alert.preparedQuantity}</span>
+                            <span>Remaining: <strong className={isSoldOut ? 'text-rose-600' : 'text-amber-600'}>{alert.remainingQuantity}</strong></span>
+                          </div>
+
+                          <div className="mt-2 text-[9px] text-secondary font-medium border-t border-secondary/10 pt-2 flex items-center justify-between">
+                            <span>Triggered:</span>
+                            <span>
+                              {isSoldOut 
+                                ? alert.soldOutAt ? new Date(alert.soldOutAt).toLocaleTimeString() : 'Just now'
+                                : alert.lowStockAt ? new Date(alert.lowStockAt).toLocaleTimeString() : 'Just now'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: REPORTS */}
+        {activeTab === "reports" && (
+          <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] space-y-6 animate-in fade-in duration-150">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-secondary/15 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-ink tracking-wide">
+                  Dish Demand Comparison & Analytics
+                </h3>
+                <p className="text-xs text-secondary mt-1">
+                  Compare forecasted, prepared, and confirmed orders to optimize waste and collection rates.
+                </p>
+              </div>
+              <button
+                onClick={handleExportCsv}
+                className="bg-primary text-white text-xs font-bold px-4 py-2.5 rounded-[10px] hover:bg-accent hover:text-ink transition active:scale-95 flex items-center gap-2 cursor-pointer"
+              >
+                📥 Export Orders & Revenue CSV
+              </button>
+            </div>
+
+            {dishDemand.length === 0 ? (
+              <div className="text-center py-12 text-secondary text-sm font-semibold italic">
+                No active menu found. Publish a daily menu to inspect historical and live metrics.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-semibold text-secondary">
+                  <thead>
+                    <tr className="border-b border-secondary/10 text-ink uppercase tracking-wider text-[9px]">
+                      <th className="py-3">Dish Name</th>
+                      <th className="py-3 text-center">Forecasted Qty</th>
+                      <th className="py-3 text-center">Prepared Qty</th>
+                      <th className="py-3 text-center">Confirmed Orders</th>
+                      <th className="py-3 text-center">Remaining Portions</th>
+                      <th className="py-3 text-center">Ratio (Ordered/Prep)</th>
+                      <th className="py-3 text-right">Collection Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dishDemand.map((dish) => {
+                      const ratio = dish.preparedQty > 0 ? (dish.confirmedQty / dish.preparedQty) * 100 : 0;
+                      const isHighDemand = ratio >= 80;
+                      return (
+                        <tr key={dish.dishId} className={`border-b border-secondary/10 last:border-0 ${
+                          isHighDemand ? 'bg-amber-50/70 border-amber-100 text-amber-900' : ''
+                        }`}>
+                          <td className="py-4 text-ink font-bold">{dish.name}</td>
+                          <td className="py-4 text-center">{dish.forecastedQty}</td>
+                          <td className="py-4 text-center">{dish.preparedQty}</td>
+                          <td className="py-4 text-center font-bold text-ink">{dish.confirmedQty}</td>
+                          <td className="py-4 text-center">{dish.remainingQty}</td>
+                          <td className="py-4 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              isHighDemand ? 'bg-amber-100 text-amber-800' : 'bg-secondary/10 text-secondary'
+                            }`}>
+                              {ratio.toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="py-4 text-right text-emerald-600 font-bold">{dish.collectionRate}%</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB: LOYALTY PROGRAM */}
+        {activeTab === "loyalty" && (
+          <div className="space-y-8 animate-in fade-in duration-150">
+            {/* Loyalty KPI Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Total Points Issued</span>
+                <span className="text-2xl font-black text-primary mt-2">
+                  {loyaltyStats?.totalPointsIssued || 0} pts
+                </span>
+                <span className="text-[9px] text-secondary font-semibold mt-1">Earned by Strathmore students</span>
+              </div>
+
+              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Total Points Redeemed</span>
+                <span className="text-2xl font-black text-emerald-600 mt-2">
+                  {loyaltyStats?.totalPointsRedeemed || 0} pts
+                </span>
+                <span className="text-[9px] text-secondary font-semibold mt-1">Equivalent KES discount credit</span>
+              </div>
+
+              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Active Loyalty Accounts</span>
+                <span className="text-2xl font-black text-ink mt-2">
+                  {loyaltyStats?.activeAccountsCount || 0}
+                </span>
+                <span className="text-[9px] text-secondary font-semibold mt-1">Valid registered accounts</span>
+              </div>
+
+              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Frozen Accounts</span>
+                <span className="text-2xl font-black text-rose-600 mt-2">
+                  {loyaltyStats?.frozenAccountsCount || 0}
+                </span>
+                <span className="text-[9px] text-secondary font-semibold mt-1">Negative balance locks</span>
+              </div>
+
+              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Redemption Eligible</span>
+                <span className="text-2xl font-black text-primary mt-2">
+                  {loyaltyStats?.eligibleAccountsCount || 0}
+                </span>
+                <span className="text-[9px] text-secondary font-semibold mt-1">Accounts with balance &gt;= 50 pts</span>
+              </div>
+            </div>
+
+            {/* Loyalty Rules & Summary card */}
+            <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] space-y-4">
+              <h3 className="text-base font-bold text-ink border-b border-secondary/15 pb-2">
+                CaféQ Loyalty System Parameter Rules
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-secondary leading-relaxed">
+                <div className="p-4 bg-background rounded-[10px] border border-secondary/10">
+                  <strong className="text-ink block mb-1">Earning Parameters</strong>
+                  <p>Students earn 1 loyalty point for every KES 10 spent on fully collected orders. Values are rounded down to the nearest point on order finalization.</p>
+                </div>
+                <div className="p-4 bg-background rounded-[10px] border border-secondary/10">
+                  <strong className="text-ink block mb-1">Redemption Parameters</strong>
+                  <p>1 point corresponds to a KES 1.00 checkout discount. Minimum redemption is 50 points; maximum redemption is 30% of the total order value. Accounts are limited to 3 redemptions per calendar day.</p>
+                </div>
+                <div className="p-4 bg-background rounded-[10px] border border-secondary/10">
+                  <strong className="text-ink block mb-1">Deduction & Frozen States</strong>
+                  <p>Points earned are proportionally deducted if uncollected dishes are auto-refunded at the end of the serving window. If the balance falls below zero, the account status is set to FROZEN.</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
