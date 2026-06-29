@@ -196,15 +196,36 @@ export default function ServingLookup() {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-ink font-sans flex flex-col justify-between selection:bg-primary/30">
-      {/* Top Header */}
-      <header className="bg-white border-b border-secondary/15 px-6 py-4 sticky top-0 z-40 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link href="/" className="text-xl font-black tracking-wider text-primary hover:opacity-90 transition">
-            CaféQ · Dispensing Tablet
-          </Link>
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-bold uppercase tracking-wider bg-secondary/10 text-secondary px-3 py-1.5 rounded-[10px] border border-secondary/20">
+    <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      
+      {/* ANNOUNCEMENT BAR (MARQUEE) */}
+      <div className="announcement-bar">
+        <div className="announcement-bar__content">
+          <span className="announcement-bar__item">Strathmore University Dining</span>
+          <span className="announcement-bar__item">Serving & Dispensing Desk Monitor</span>
+          <span className="announcement-bar__item">KenyaSMS Automated Dispatch confirmations</span>
+          <span className="announcement-bar__item">Enter Student Pickup Reference Ticket</span>
+          {/* Repeated for marquee loop */}
+          <span className="announcement-bar__item">Strathmore University Dining</span>
+          <span className="announcement-bar__item">Serving & Dispensing Desk Monitor</span>
+          <span className="announcement-bar__item">KenyaSMS Automated Dispatch confirmations</span>
+          <span className="announcement-bar__item">Enter Student Pickup Reference Ticket</span>
+        </div>
+      </div>
+
+      {/* HEADER */}
+      <header className="header-wrapper">
+        <div className="header-top" style={{ padding: "15px 40px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span className="logo">CAFÉQ</span>
+            <span style={{ height: "16px", width: "1px", backgroundColor: "rgba(114, 106, 99, 0.2)", margin: "0 10px" }}></span>
+            <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(114, 106, 99, 0.6)" }}>
+              Dispensing Tablet
+            </span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+            <span style={{ fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", backgroundColor: "rgba(99, 110, 82, 0.1)", border: "1px solid rgba(99, 110, 82, 0.25)", color: "#636e52", padding: "5px 12px", borderRadius: "10px" }}>
               Station Active
             </span>
             <button
@@ -213,7 +234,8 @@ export default function ServingLookup() {
                 localStorage.removeItem("user");
                 router.push("/login");
               }}
-              className="text-xs font-bold px-4 py-1.5 rounded-[10px] border border-secondary/35 hover:bg-secondary/10 transition text-secondary hover:text-ink"
+              className="nav-link"
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em" }}
             >
               Sign Out
             </button>
@@ -221,28 +243,29 @@ export default function ServingLookup() {
         </div>
       </header>
 
-      {/* Main Board */}
-      <main className="flex-grow max-w-6xl w-full mx-auto px-6 py-8 flex flex-col justify-center">
+      {/* MAIN CONTAINER */}
+      <main className="main-content" style={{ flexGrow: 1, padding: "40px 20px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        
         {error && (
-          <div className="mb-6 max-w-xl mx-auto w-full bg-status-sold-out/10 border border-status-sold-out/30 p-4 rounded-[10px] text-center text-xs text-status-sold-out font-bold">
+          <div style={{ maxWidth: "600px", margin: "0 auto 20px", width: "100%", backgroundColor: "rgba(220, 38, 38, 0.08)", border: "1px solid rgba(220, 38, 38, 0.2)", borderRadius: "10px", color: "#DC2626", padding: "12px 20px", fontSize: "12px", fontWeight: "700", textAlign: "center" }}>
             {error}
           </div>
         )}
 
         {successMsg && (
-          <div className="mb-6 max-w-xl mx-auto w-full bg-emerald-50 border border-emerald-200 p-4 rounded-[10px] text-center text-xs text-emerald-800 font-bold">
+          <div style={{ maxWidth: "600px", margin: "0 auto 20px", width: "100%", backgroundColor: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "10px", color: "#10B981", padding: "12px 20px", fontSize: "12px", fontWeight: "700", textAlign: "center" }}>
             {successMsg}
           </div>
         )}
 
         {!order ? (
           /* State 1: Enter Reference Code Input view with virtual keypad */
-          <div className="max-w-md w-full mx-auto bg-white border border-secondary/20 p-8 rounded-[10px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex flex-col items-center">
-            <h2 className="text-sm font-bold uppercase text-secondary tracking-widest mb-6">
+          <div style={{ maxWidth: "500px", width: "100%", margin: "0 auto", backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "35px", boxShadow: "0 10px 45px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column", alignItems: "center", color: "#726a63", fontFamily: "Libre Franklin" }}>
+            
+            <h2 style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(114, 106, 99, 0.6)", marginBottom: "25px" }}>
               Enter Pickup Code
             </h2>
 
-            {/* Typing input field form */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -250,7 +273,7 @@ export default function ServingLookup() {
                   handleLookup();
                 }
               }}
-              className="w-full flex flex-col items-center"
+              style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}
             >
               <input
                 type="text"
@@ -262,17 +285,19 @@ export default function ServingLookup() {
                   setReferenceCode(val);
                 }}
                 placeholder="ENTER CODE"
-                className="w-full h-16 bg-background rounded-[10px] border border-secondary/30 text-center text-3xl font-mono font-black tracking-[0.2em] text-ink focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition mb-6 shadow-inner placeholder-secondary/30 placeholder:tracking-normal"
+                style={{ width: "100%", height: "65px", backgroundColor: "#faf9f7", borderRadius: "15px", border: "1px solid rgba(114, 106, 99, 0.3)", textAlign: "center", fontSize: "32px", fontFamily: "monospace", fontWeight: "900", letterSpacing: "0.25em", color: "#726a63", outline: "none", transition: "all 0.3s ease", marginBottom: "25px", boxShadow: "inset 0 2px 5px rgba(0,0,0,0.02)" }}
               />
 
               {/* Keypad Grid (6 columns for A-Z, 0-9) */}
-              <div className="grid grid-cols-6 gap-2 w-full mb-3">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "8px", width: "100%", marginBottom: "15px" }}>
                 {keys.flat().map((key) => (
                   <button
                     key={key}
                     type="button"
                     onClick={() => handleKeypadPress(key)}
-                    className="h-10 text-xs font-black rounded-[10px] bg-background border border-secondary/20 text-ink hover:bg-secondary/10 hover:border-primary/30 active:scale-95 transition flex items-center justify-center select-none"
+                    style={{ height: "42px", fontSize: "11px", fontWeight: "900", borderRadius: "10px", backgroundColor: "#faf9f7", border: "1px solid rgba(114, 106, 99, 0.15)", color: "#726a63", cursor: "pointer", transition: "all 0.2s" }}
+                    onMouseDown={(e) => { e.currentTarget.style.backgroundColor = "rgba(183, 120, 107, 0.15)"; }}
+                    onMouseUp={(e) => { e.currentTarget.style.backgroundColor = "#faf9f7"; }}
                   >
                     {key}
                   </button>
@@ -280,18 +305,18 @@ export default function ServingLookup() {
               </div>
 
               {/* Clear & Back controls */}
-              <div className="grid grid-cols-2 gap-3 w-full mb-6">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px", width: "100%", marginBottom: "25px" }}>
                 <button
                   type="button"
                   onClick={() => handleKeypadPress("CLEAR")}
-                  className="h-11 text-xs font-bold rounded-[10px] bg-secondary/5 border border-secondary/25 text-secondary hover:bg-secondary/15 hover:text-ink active:scale-95 transition flex items-center justify-center select-none"
+                  style={{ height: "45px", fontSize: "11px", fontWeight: "700", borderRadius: "30px", backgroundColor: "rgba(114, 106, 99, 0.05)", border: "1px solid rgba(114, 106, 99, 0.2)", color: "#726a63", cursor: "pointer", transition: "all 0.2s" }}
                 >
                   CLEAR
                 </button>
                 <button
                   type="button"
                   onClick={() => handleKeypadPress("BACK")}
-                  className="h-11 text-xs font-bold rounded-[10px] bg-secondary/5 border border-secondary/25 text-secondary hover:bg-secondary/15 hover:text-ink active:scale-95 transition flex items-center justify-center select-none"
+                  style={{ height: "45px", fontSize: "11px", fontWeight: "700", borderRadius: "30px", backgroundColor: "rgba(114, 106, 99, 0.05)", border: "1px solid rgba(114, 106, 99, 0.2)", color: "#726a63", cursor: "pointer", transition: "all 0.2s" }}
                 >
                   BACKSPACE
                 </button>
@@ -300,11 +325,8 @@ export default function ServingLookup() {
               <button
                 type="submit"
                 disabled={loading || referenceCode.length !== 6}
-                className={`w-full py-4 rounded-[10px] font-bold text-sm transition tracking-wider ${
-                  referenceCode.length === 6 && !loading
-                    ? "bg-primary text-white hover:bg-accent hover:text-ink shadow-[0_2px_6px_rgba(188,91,57,0.1)] active:scale-98"
-                    : "bg-secondary/10 border border-secondary/20 text-secondary/40 cursor-not-allowed"
-                }`}
+                className="slide-btn"
+                style={{ width: "100%", height: "50px", opacity: (referenceCode.length !== 6 || loading) ? 0.5 : 1 }}
               >
                 {loading ? "SEARCHING..." : "LOOKUP TICKET"}
               </button>
@@ -312,77 +334,87 @@ export default function ServingLookup() {
           </div>
         ) : (
           /* State 2: Result details and list items */
-          <div className="max-w-2xl w-full mx-auto bg-white border border-secondary/20 p-8 rounded-[10px] shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+          <div style={{ maxWidth: "700px", width: "100%", margin: "0 auto", backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "35px", boxShadow: "0 10px 45px rgba(0,0,0,0.03)", color: "#726a63", fontFamily: "Libre Franklin" }}>
+            
             {/* Header info */}
-            <div className="flex flex-wrap items-center justify-between border-b border-secondary/15 pb-5 mb-6 gap-4">
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(114, 106, 99, 0.15)", paddingBottom: "20px", marginBottom: "25px", gap: "15px" }}>
               <div>
-                <span className="text-[10px] uppercase font-bold tracking-widest text-secondary/60 block mb-1">
+                <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(114, 106, 99, 0.5)", display: "block", marginBottom: "5px" }}>
                   Pickup Reference
                 </span>
-                <span className="text-3xl font-black font-mono tracking-wider text-primary">
+                <span style={{ fontSize: "28px", fontWeight: "900", fontFamily: "monospace", letterSpacing: "0.15em", color: "#b7786b" }}>
                   {order.referenceCode}
                 </span>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-secondary/60 block mb-1">
-                  Customer Profile
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(114, 106, 99, 0.5)", display: "block", marginBottom: "5px" }}>
+                  Student Customer
                 </span>
-                <span className="text-base font-bold text-ink block">
+                <span style={{ fontSize: "16px", fontWeight: "700", display: "block", color: "#726a63" }}>
                   {order.studentName}
                 </span>
-                <span className="text-xs text-secondary/70 font-mono">
+                <span style={{ fontSize: "11px", color: "rgba(114, 106, 99, 0.7)", fontFamily: "monospace" }}>
                   ID: {order.studentNumber}
                 </span>
               </div>
             </div>
 
             {/* List of items */}
-            <div className="space-y-4 mb-8">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-secondary/60 block mb-2">
+            <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "30px" }}>
+              <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(114, 106, 99, 0.5)", display: "block" }}>
                 Dishes in Order
               </span>
               {order.items.map((item) => {
                 const isCollected = item.status === "COLLECTED";
                 const isRefunded = item.status === "REFUNDED";
 
+                let rowBg = "#ffffff";
+                let rowBorder = "1px solid rgba(114, 106, 99, 0.15)";
+                let rowColor = "#726a63";
+
+                if (isCollected) {
+                  rowBg = "rgba(16, 185, 129, 0.03)";
+                  rowBorder = "1px solid rgba(16, 185, 129, 0.25)";
+                  rowColor = "#10B981";
+                } else if (isRefunded) {
+                  rowBg = "rgba(114, 106, 99, 0.03)";
+                  rowBorder = "1px solid rgba(114, 106, 99, 0.1)";
+                  rowColor = "rgba(114, 106, 99, 0.6)";
+                }
+
                 return (
                   <div
                     key={item.orderItemId}
-                    className={`flex items-center justify-between p-4 rounded-[10px] border transition-all duration-300 ${
-                      isCollected
-                        ? "bg-emerald-50/50 border-emerald-200 text-emerald-800"
-                        : isRefunded
-                        ? "bg-secondary/5 border-secondary/10 opacity-60 text-secondary"
-                        : "bg-background/40 border-secondary/20 hover:border-secondary/40 text-ink"
-                    }`}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px", borderRadius: "15px", border: rowBorder, backgroundColor: rowBg, color: rowColor, transition: "all 0.2s" }}
                   >
-                    <div className="flex-grow pr-4">
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className={`text-sm font-bold ${isCollected ? "text-emerald-750 line-through opacity-70" : isRefunded ? "text-secondary/60 line-through" : "text-ink"}`}>
+                    <div style={{ flexGrow: 1, paddingRight: "15px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "5px" }}>
+                        <span style={{ fontSize: "14px", fontWeight: "700", textDecoration: (isCollected || isRefunded) ? "line-through" : "none" }}>
                           {item.dishName}
                         </span>
-                        <span className="bg-secondary/10 text-[10px] font-bold text-secondary px-2 py-0.5 rounded-[10px] border border-secondary/15">
+                        <span style={{ fontSize: "10px", fontWeight: "700", border: `1px solid ${isCollected ? "rgba(16,185,129,0.3)" : "rgba(114, 106, 99, 0.25)"}`, padding: "2px 8px", borderRadius: "8px" }}>
                           x{item.quantity}
                         </span>
                       </div>
-                      <span className="text-xs text-secondary/70">
+                      <span style={{ fontSize: "11px", color: "rgba(114, 106, 99, 0.6)" }}>
                         Unit Price: KES {item.unitPrice.toFixed(2)}
                       </span>
                     </div>
 
                     <div>
                       {isCollected ? (
-                        <span className="text-xs font-bold text-emerald-700 bg-emerald-100/40 border border-emerald-200 px-3 py-1.5 rounded-[10px] flex items-center gap-1.5">
+                        <span style={{ fontSize: "11px", fontWeight: "750", color: "#10B981", backgroundColor: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "8px 15px", borderRadius: "30px" }}>
                           ✓ Dispensed
                         </span>
                       ) : isRefunded ? (
-                        <span className="text-xs font-bold text-secondary bg-secondary/10 border border-secondary/25 px-3 py-1.5 rounded-[10px]">
+                        <span style={{ fontSize: "11px", fontWeight: "700", color: "rgba(114, 106, 99, 0.6)", padding: "8px 15px" }}>
                           Refunded
                         </span>
                       ) : (
                         <button
                           onClick={() => handleMarkCollected(item.orderItemId)}
-                          className="text-xs font-bold bg-primary text-white hover:bg-accent hover:text-ink px-4 py-2 rounded-[10px] transition active:scale-95 shadow-[0_2px_4px_rgba(188,91,57,0.1)]"
+                          className="slide-btn"
+                          style={{ padding: "8px 18px", fontSize: "11px", height: "auto" }}
                         >
                           Mark Dispensed
                         </button>
@@ -394,24 +426,28 @@ export default function ServingLookup() {
             </div>
 
             {/* Bottom Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-secondary/15">
-              <div className="flex items-center gap-2 text-xs text-secondary font-medium">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(114, 106, 99, 0.15)", paddingTop: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: "600" }}>
                 <span>Order Status:</span>
                 <span
-                  className={`font-bold uppercase tracking-wider px-2 py-0.5 rounded-[10px] ${
-                    order.status === "COLLECTED"
-                      ? "text-emerald-700 bg-emerald-50"
-                      : order.status === "REFUNDED"
-                      ? "text-secondary bg-secondary/15"
-                      : "text-accent bg-accent/10"
-                  }`}
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: "700",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    padding: "4px 10px",
+                    borderRadius: "10px",
+                    backgroundColor: order.status === "COLLECTED" ? "rgba(16,185,129,0.1)" : order.status === "REFUNDED" ? "rgba(114,106,99,0.1)" : "rgba(183,120,107,0.1)",
+                    color: order.status === "COLLECTED" ? "#10B981" : order.status === "REFUNDED" ? "#726a63" : "#b7786b"
+                  }}
                 >
                   {order.status}
                 </span>
               </div>
               <button
                 onClick={handleReset}
-                className="text-xs font-bold bg-secondary/10 hover:bg-secondary/15 text-secondary hover:text-ink border border-secondary/25 px-5 py-2.5 rounded-[10px] transition active:scale-95"
+                className="slide-btn"
+                style={{ height: "auto", padding: "10px 22px", backgroundColor: "transparent", border: "1px solid rgba(114,106,99,0.3)", color: "#726a63", boxShadow: "none" }}
               >
                 ← Dispense New Ticket
               </button>
@@ -420,15 +456,28 @@ export default function ServingLookup() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-white py-6 text-center text-[10px] text-secondary/60 border-t border-secondary/15 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-          <p>© {new Date().getFullYear()} CaféQ · Strathmore University Dining Hall</p>
-          <p className="font-mono text-[9px] bg-background px-2.5 py-1 rounded border border-secondary/10 text-secondary/70">
-            Connected via secure Socket.IO channel
-          </p>
+      {/* FOOTER */}
+      <footer className="footer">
+        <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "20px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(114,106,99,0.1)", flexWrap: "wrap", gap: "10px" }}>
+          <p style={{ fontSize: "10px", color: "rgba(114,106,99,0.6)" }}>© {new Date().getFullYear()} CaféQ Strathmore Dining. All rights reserved.</p>
+          <span style={{ fontSize: "9px", fontFamily: "monospace", backgroundColor: "rgba(114,106,99,0.06)", border: "1px solid rgba(114,106,99,0.1)", padding: "4px 10px", borderRadius: "5px", color: "rgba(114,106,99,0.8)" }}>
+            Dispenser Namespace /server-lookup Sync Enabled
+          </span>
         </div>
       </footer>
+
+      {/* CSS KEYFRAMES FOR ROTATION AND ANIMATION */}
+      <style jsx global>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: .5; }
+        }
+      `}</style>
+
     </div>
   );
 }

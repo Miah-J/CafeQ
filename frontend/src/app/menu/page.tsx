@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { 
+  UtensilsCrossed, 
+  AlertTriangle, 
+  Info 
+} from "lucide-react";
+
 
 interface Dish {
   id: string;
@@ -50,19 +56,30 @@ interface OrderSuccessDetail {
   }>;
 }
 
-const DIETARY_FILTERS = ["All", "Halal", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free"];
+const DIETARY_FILTERS = ["Halal", "Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free"];
 
 export default function MenuBrowsing() {
   const [menu, setMenu] = useState<Menu | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sortOption, setSortOption] = useState<string>("featured");
+  const [priceMin, setPriceMin] = useState<string>("");
+  const [priceMax, setPriceMax] = useState<string>("");
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const router = useRouter();
 
+  const getDashboardLink = () => {
+    if (!user) return "/login";
+    if (user.role === "Cashier") return "/cashier";
+    if (user.role === "ServingStaff" || user.role === "Server") return "/server";
+    if (user.role === "Admin") return "/admin";
+    return "/menu";
+  };
+
+
   // Cart and checkout states
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<OrderSuccessDetail | null>(null);
 
@@ -96,9 +113,15 @@ export default function MenuBrowsing() {
     isEligible: boolean;
   } | null>(null);
   const [loyaltyHistory, setLoyaltyHistory] = useState<any[]>([]);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [pointsToRedeemInput, setPointsToRedeemInput] = useState("");
   const [redeemError, setRedeemError] = useState("");
+
+  // Drawer & Overlay UI States
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  const [loyaltyDrawerOpen, setLoyaltyDrawerOpen] = useState(false);
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [cookieDismissed, setCookieDismissed] = useState(false);
 
   const fetchWalletBalance = async () => {
     const token = localStorage.getItem("token");
@@ -172,14 +195,14 @@ export default function MenuBrowsing() {
     void fetchWalletBalance();
     void fetchLoyaltyStatus();
 
+    const cookiesAccepted = localStorage.getItem("cookies_accepted");
+    if (cookiesAccepted === "true") {
+      setCookieDismissed(true);
+    }
+
     const fetchMenu = async () => {
       try {
-        const activeFilters = selectedTags.filter(t => t !== "All");
-        const queryParams = activeFilters.length > 0 
-          ? `?tags=${activeFilters.join(",")}` 
-          : "";
-
-        const res = await fetch(`http://localhost:3001/menus/active${queryParams}`, {
+        const res = await fetch(`http://localhost:3001/menus/active`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -212,17 +235,13 @@ export default function MenuBrowsing() {
     const interval = setInterval(fetchMenu, 5000);
 
     return () => clearInterval(interval);
-  }, [selectedTags, router]);
+  }, [router]);
 
   const toggleTag = (tag: string) => {
-    if (tag === "All") {
-      setSelectedTags([]);
-      return;
-    }
     if (selectedTags.includes(tag)) {
       setSelectedTags(selectedTags.filter((t) => t !== tag));
     } else {
-      setSelectedTags([...selectedTags.filter(t => t !== "All"), tag]);
+      setSelectedTags([...selectedTags, tag]);
     }
   };
 
@@ -469,7 +488,6 @@ export default function MenuBrowsing() {
     }
   };
 
-  // Checkout submission
   const handleCheckout = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -501,13 +519,13 @@ export default function MenuBrowsing() {
 
       const createdOrder = data;
       setPendingOrderId(createdOrder.id);
-      setIsReviewOpen(false);
+      setCartDrawerOpen(false);
 
       void processCheckoutPayment(createdOrder.id, Number(createdOrder.totalAmount), useWallet);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Checkout failed. Portions may have changed.";
       setError(errMsg);
-      setIsReviewOpen(false);
+      setCartDrawerOpen(false);
     } finally {
       setCheckoutLoading(false);
     }
@@ -518,19 +536,6 @@ export default function MenuBrowsing() {
     ? Math.max(0, (cartTotal - pointsToRedeem) - walletBalance)
     : (cartTotal - pointsToRedeem);
 
-  // Render loading state
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-ink font-sans">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4"></div>
-          <p className="text-secondary text-xs font-bold">Assembling live menu portions...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Ensure exactly 6 dish cards are displayed in the grid, forcing one to look sold out
   const getDishesGrid = () => {
     const rawDishes = menu?.dishes || [];
     const dishes: Dish[] = [...rawDishes];
@@ -563,891 +568,819 @@ export default function MenuBrowsing() {
     });
   };
 
-  const displayDishes = getDishesGrid();
+  const getFilteredAndSortedDishes = () => {
+    let list = getDishesGrid();
+    
+    // Filter by tags
+    if (selectedTags.length > 0) {
+      list = list.filter((dish) => 
+        dish.dietaryTags?.some((tag) => selectedTags.includes(tag))
+      );
+    }
+
+    // Filter by min price
+    if (priceMin !== "") {
+      list = list.filter((dish) => Number(dish.price) >= Number(priceMin));
+    }
+
+    // Filter by max price
+    if (priceMax !== "") {
+      list = list.filter((dish) => Number(dish.price) <= Number(priceMax));
+    }
+
+    // Sort
+    if (sortOption === "price-low") {
+      list.sort((a, b) => Number(a.price) - Number(b.price));
+    } else if (sortOption === "price-high") {
+      list.sort((a, b) => Number(b.price) - Number(a.price));
+    } else if (sortOption === "title-az") {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
+    return list;
+  };
+
+  const acceptCookies = () => {
+    localStorage.setItem("cookies_accepted", "true");
+    setCookieDismissed(true);
+  };
+
+  const displayDishes = getFilteredAndSortedDishes();
+
+  if (loading) {
+    return (
+      <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ border: "4px solid #b7786b", borderTopColor: "transparent", borderRadius: "50%", width: "40px", height: "40px", animation: "spin 1s linear infinite", margin: "0 auto 15px" }}></div>
+          <p style={{ fontFamily: "Libre Franklin", fontSize: "13px", fontWeight: 700, color: "#726a63" }}>Assembling daily portions...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background text-ink font-sans flex flex-col justify-between select-none">
-      {/* 1. Top Bar */}
-      <header className="bg-primary px-6 py-4 sticky top-0 z-40 text-white shadow-sm flex items-center justify-between">
-        <div className="max-w-6xl w-full mx-auto flex items-center justify-between">
-          <Link href="/" className="text-2xl font-extrabold tracking-tight hover:opacity-90 transition">
-            CaféQ
-          </Link>
-          <span className="text-xs font-bold uppercase tracking-wider bg-white/10 px-3 py-1 rounded">
-            Lunch · 12:00 PM – 2:00 PM
-          </span>
+    <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      
+      {/* ANNOUNCEMENT BAR (MARQUEE) */}
+      <div className="announcement-bar">
+        <div className="announcement-bar__content">
+          <span className="announcement-bar__item">Strathmore University Dining</span>
+          <span className="announcement-bar__item">Order Pre-locked Portions Cashless</span>
+          <span className="announcement-bar__item">Pay via Safaricom M-Pesa STK Push</span>
+          <span className="announcement-bar__item">KenyaSMS Pick Up Notifications</span>
+          {/* Repeated for marquee loop */}
+          <span className="announcement-bar__item">Strathmore University Dining</span>
+          <span className="announcement-bar__item">Order Pre-locked Portions Cashless</span>
+          <span className="announcement-bar__item">Pay via Safaricom M-Pesa STK Push</span>
+          <span className="announcement-bar__item">KenyaSMS Pick Up Notifications</span>
         </div>
-      </header>
+      </div>
 
-      {/* User Info Bar (Secondary Sub-Bar) */}
-      <section className="bg-white border-b border-secondary/20 px-6 py-3">
-        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          {user && (
-            <p className="text-xs text-secondary font-semibold">
-              Logged in as: <span className="text-primary font-bold">{user.fullName}</span> ({user.role})
-            </p>
-          )}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 text-xs font-bold">
-              <span className="text-secondary font-medium">Wallet:</span>
-              <span className="text-primary">KES {walletBalance.toFixed(2)}</span>
-              <button
+      {/* HEADER */}
+      <header className="header-wrapper">
+        <div className="header-top">
+          <Link href="/" className="logo">CAFÉQ</Link>
+          
+          <div className="header-utilities">
+            {user && (
+              <span className="small-hide" style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase" }}>
+                {user.fullName} ({user.role})
+              </span>
+            )}
+
+            {/* WALLET BALANCE WITH DIRECT TOP UP */}
+            <div className="small-hide" style={{ display: "flex", alignItems: "center", gap: "8px", borderLeft: "1px solid rgba(114, 106, 99, 0.2)", paddingLeft: "15px" }}>
+              <span style={{ fontSize: "12px", color: "rgba(114, 106, 99, 0.8)", fontWeight: "600" }}>Wallet:</span>
+              <span style={{ fontSize: "12px", color: "#b7786b", fontWeight: "700" }}>KES {walletBalance.toFixed(2)}</span>
+              <button 
                 onClick={() => {
                   setIsTopUpOpen(true);
                   setTopUpStatus("IDLE");
                   setTopUpAmount("");
-                }}
-                className="bg-primary text-white text-[10px] font-bold px-2 py-1 rounded hover:bg-accent hover:text-ink transition active:scale-95"
+                }} 
+                className="slide-btn" 
+                style={{ padding: "6px 12px", fontSize: "9px" }}
               >
                 Top Up
               </button>
             </div>
 
+            {/* LOYALTY POINTS INDICATOR */}
             {loyaltyStatus && (
-              <div className="flex items-center gap-2 text-xs font-bold border-l border-secondary/20 pl-3">
-                <span className="text-secondary font-medium">Loyalty:</span>
-                <span className="text-primary">{loyaltyStatus.pointsBalance} pts</span>
-                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                  loyaltyStatus.tier === 'Gold' 
-                    ? 'bg-amber-100 text-amber-800 border border-amber-300' 
-                    : loyaltyStatus.tier === 'Silver'
-                    ? 'bg-slate-100 text-slate-800 border border-slate-300'
-                    : 'bg-orange-100 text-orange-800 border border-orange-300'
-                }`}>
-                  {loyaltyStatus.tier}
-                </span>
-                <button
-                  onClick={() => {
-                    void fetchLoyaltyHistory();
-                    setIsHistoryOpen(true);
-                  }}
-                  className="text-primary hover:underline hover:text-accent text-[10px] ml-1 transition"
-                >
-                  History
-                </button>
-              </div>
+              <button 
+                onClick={() => {
+                  void fetchLoyaltyHistory();
+                  setLoyaltyDrawerOpen(true);
+                }}
+                className="nav-icon-btn small-hide" 
+                aria-label="Loyalty status"
+                style={{ borderLeft: "1px solid rgba(114, 106, 99, 0.2)", paddingLeft: "15px", gap: "5px", display: "flex", alignItems: "center" }}
+              >
+                <svg viewBox="0 0 24 24" style={{ width: "20px", height: "20px" }}><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                <span style={{ fontSize: "11px" }}>{loyaltyStatus.pointsBalance} pts</span>
+              </button>
             )}
 
-            <button
-              onClick={handleLogout}
-              className="rounded border border-secondary/30 px-3 py-1 text-xs font-bold text-secondary hover:bg-secondary/5 transition ml-2"
-            >
+            <button onClick={handleLogout} className="nav-link" style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em" }}>
               Sign Out
+            </button>
+
+            {/* CART CONTAINER */}
+            <button onClick={() => setCartDrawerOpen(true)} className="nav-icon-btn cart-btn highlight" aria-label="Shopping cart">
+              <svg viewBox="0 0 24 24"><path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+              <span className="cart-badge">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
             </button>
           </div>
         </div>
+      </header>
+
+      {/* HERO BANNER SECTION */}
+      <section className="hero-banner" style={{ backgroundImage: "linear-gradient(rgba(250,247,246,0.92) 50%, rgba(250,247,246,0.5) 100%), url('https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&q=80&w=1400')" }}>
+        <h1 className="hero-title">Strathmore Dining, Served Hot</h1>
+        <p className="hero-subtitle">Freshly prepared daily specials, pre-locked portions, and cash-free counter collection.</p>
       </section>
 
-      {/* Main Grid View */}
-      <main className="max-w-6xl w-full mx-auto px-6 py-8 flex-grow">
-        {error && (
-          <div className="mb-6 rounded-[10px] bg-status-sold-out/10 border border-status-sold-out/30 p-3.5 text-xs text-status-sold-out font-bold text-center">
-            {error}
+      {/* CONTROLS BAR */}
+      <div className="controls-wrapper">
+        <div className="controls-bar">
+          
+          <button className="control-btn" onClick={() => setFilterDrawerOpen(true)}>
+            <svg viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+            <span>Dietary Filters</span>
+          </button>
+          
+          <div className="product-counter">Showing {displayDishes.length} dishes</div>
+          
+          <div className="sort-container">
+            <button className="control-btn" onClick={() => setSortDropdownOpen(!sortDropdownOpen)}>
+              <span>Sort By</span>
+              <svg viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            
+            {sortDropdownOpen && (
+              <div className="sort-dropdown" style={{ display: "block" }}>
+                <div className={`sort-option ${sortOption === "featured" ? "active" : ""}`} onClick={() => { setSortOption("featured"); setSortDropdownOpen(false); }}>Featured</div>
+                <div className={`sort-option ${sortOption === "price-low" ? "active" : ""}`} onClick={() => { setSortOption("price-low"); setSortDropdownOpen(false); }}>Price, low to high</div>
+                <div className={`sort-option ${sortOption === "price-high" ? "active" : ""}`} onClick={() => { setSortOption("price-high"); setSortDropdownOpen(false); }}>Price, high to low</div>
+                <div className={`sort-option ${sortOption === "title-az" ? "active" : ""}`} onClick={() => { setSortOption("title-az"); setSortDropdownOpen(false); }}>Alphabetically, A-Z</div>
+              </div>
+            )}
           </div>
-        )}
+          
+        </div>
+      </div>
 
+      {/* ERROR DISPLAY */}
+      {error && (
+        <div style={{ maxWidth: "1400px", margin: "20px auto 0", width: "95%", backgroundColor: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "#DC2626", borderRadius: "10px", padding: "12px 20px", fontSize: "12px", fontFamily: "Libre Franklin", fontWeight: "700", textAlign: "center" }}>
+          {error}
+        </div>
+      )}
+
+      {/* MAIN CATALOG GRID */}
+      <main className="main-content">
+        
         {/* Order Success State */}
         {orderSuccess && (
-          <div className="mb-10 max-w-xl mx-auto rounded-[10px] border border-secondary/20 bg-white p-8 text-center shadow-sm">
-            <div className="h-12 w-12 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-600 flex items-center justify-center mx-auto mb-4 text-xl font-bold">
-              ✓
-            </div>
-            <h3 className="text-xl font-bold text-ink mb-2">Order Placed Successfully!</h3>
-            <p className="text-xs text-secondary mb-6 leading-relaxed">
-              Your order has been confirmed. Present your pickup reference code below at the cafeteria counter to collect your dishes.
+          <div style={{ maxWidth: "600px", margin: "0 auto 40px", backgroundColor: "#ffffff", borderRadius: "20px", border: "1px solid rgba(114, 106, 99, 0.15)", padding: "40px", textAlign: "center", boxShadow: "0 10px 40px rgba(0,0,0,0.04)" }}>
+            <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: "20px", fontWeight: "700" }}>✓</div>
+            <h3 style={{ fontFamily: "DM Serif Display", fontSize: "24px", color: "#726a63", fontWeight: 400, marginBottom: "8px" }}>Order Placed Successfully!</h3>
+            <p style={{ fontSize: "12px", color: "rgba(114, 106, 99, 0.8)", marginBottom: "25px", lineHeight: "1.6" }}>
+              Your order has been pre-locked. Present your unique pickup reference code at the cafeteria counter to collect your dishes instantly.
             </p>
 
             {orderSuccess.referenceCode && (
-              <div className="mt-2 mb-6 p-5 rounded-[10px] border border-accent bg-accent/10 text-center shadow-inner">
-                <div className="text-[10px] uppercase font-bold tracking-widest text-secondary mb-1">
-                  Pickup Reference Code
-                </div>
-                <div className="text-4xl font-black tracking-widest text-primary font-mono select-all">
-                  {orderSuccess.referenceCode}
-                </div>
-                <div className="text-[10px] text-secondary/70 mt-2 font-semibold">
-                  ✓ An SMS confirmation was sent to your registered phone number.
-                </div>
+              <div style={{ border: "1px solid #b7786b", backgroundColor: "rgba(183, 120, 107, 0.08)", padding: "20px", borderRadius: "15px", marginBottom: "25px" }}>
+                <span style={{ fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(114, 106, 99, 0.8)" }}>Pickup Code</span>
+                <h4 style={{ fontSize: "38px", fontFamily: "monospace", color: "#b7786b", fontWeight: "900", letterSpacing: "0.2em", margin: "8px 0" }}>{orderSuccess.referenceCode}</h4>
+                <span style={{ fontSize: "10px", color: "rgba(114, 106, 99, 0.6)", fontWeight: "600" }}>✓ SMS confirmation sent via KenyaSMS</span>
               </div>
             )}
 
-            <div className="rounded-[10px] border border-secondary/25 p-4 text-left space-y-3 mb-6 text-xs text-secondary">
-              <div className="flex justify-between border-b border-secondary/10 pb-2">
+            <div style={{ border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "15px", padding: "15px", textAlign: "left", fontSize: "12px", display: "flex", flexDirection: "column", gap: "10px", marginBottom: "25px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(114, 106, 99, 0.1)", paddingBottom: "8px", marginBottom: "8px" }}>
                 <span>Order ID:</span>
-                <span className="font-mono text-ink font-bold">{orderSuccess.id}</span>
+                <span style={{ fontFamily: "monospace", fontWeight: "700" }}>{orderSuccess.id}</span>
               </div>
-              <div className="flex justify-between border-b border-secondary/10 pb-2">
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(114, 106, 99, 0.1)", paddingBottom: "8px", marginBottom: "8px" }}>
                 <span>Status:</span>
-                <span className="text-emerald-600 font-bold">CONFIRMED</span>
+                <span style={{ color: "#10B981", fontWeight: "700" }}>CONFIRMED</span>
               </div>
               {mpesaReceipt && (
-                <div className="flex justify-between border-b border-secondary/10 pb-2">
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid rgba(114, 106, 99, 0.1)", paddingBottom: "8px", marginBottom: "8px" }}>
                   <span>M-Pesa Receipt:</span>
-                  <span className="font-mono text-emerald-600 font-bold">{mpesaReceipt}</span>
+                  <span style={{ fontFamily: "monospace", color: "#10B981", fontWeight: "700" }}>{mpesaReceipt}</span>
                 </div>
               )}
-              <div className="flex justify-between pt-1 font-bold text-sm text-ink">
+              <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "8px", fontSize: "14px", fontWeight: "700" }}>
                 <span>Total Amount:</span>
-                <span className="text-primary font-extrabold">KES {orderSuccess.totalAmount.toLocaleString()}</span>
+                <span style={{ color: "#b7786b" }}>KES {orderSuccess.totalAmount.toLocaleString()}</span>
               </div>
             </div>
-            <button
-              onClick={() => setOrderSuccess(null)}
-              className="rounded-[10px] bg-primary px-6 py-2.5 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
-            >
-              Back to Menu
-            </button>
+
+            <button onClick={() => setOrderSuccess(null)} className="slide-btn">Back to Menu</button>
           </div>
         )}
 
-        {/* 2. Dietary Filter Row */}
-        <div className="mb-8">
-          <h3 className="text-[10px] font-bold uppercase tracking-wider text-secondary mb-3">
-            Dietary Filters
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {DIETARY_FILTERS.map((tag) => {
-              const active = tag === "All" ? selectedTags.length === 0 : selectedTags.includes(tag);
-              return (
-                <button
-                  key={tag}
-                  onClick={() => toggleTag(tag)}
-                  className={`rounded-full px-4 py-2 text-xs font-bold tracking-wide transition border ${
-                    active
-                      ? "bg-primary border-primary text-white"
-                      : "bg-white border-secondary/35 text-secondary hover:bg-secondary/5"
-                  }`}
-                >
-                  {tag}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Catalog Grid */}
+        <div className="product-grid">
+          {displayDishes.map((dish) => {
+            const isSoldOut = dish.isSoldOut || dish.liveQuantity <= 0;
+            const isLowStock = dish.liveQuantity > 0 && dish.liveQuantity <= 15;
 
-        {/* 3. Main Area - Split Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          
-          {/* Left Column: Grid of 6 Dish Cards */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-ink tracking-wide">
-                Today&apos;s Lunch Menu
-              </h2>
-              {/* 4. Small Status Strip / Legend near grid */}
-              <div className="flex gap-2 text-[9px] uppercase font-bold tracking-wider">
-                <span className="px-2.5 py-1 rounded bg-[#F0B429]/10 border border-[#F0B429]/30 text-[#C48000]">
-                  Low Stock Badge
-                </span>
-                <span className="px-2.5 py-1 rounded bg-[#DC2626]/10 border border-[#DC2626]/30 text-[#DC2626]">
-                  Sold Out Badge
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {displayDishes.map((dish, i) => {
-                const isSoldOut = dish.isSoldOut || dish.liveQuantity <= 0;
-                const isLowStock = dish.liveQuantity > 0 && dish.liveQuantity <= 15;
-
-                return (
-                  <div
-                    key={dish.id}
-                    className={`relative flex flex-col justify-between rounded-[10px] border p-6 bg-white transition duration-150 ${
-                      isSoldOut
-                        ? "border-secondary/20 opacity-60 bg-secondary/5"
-                        : "border-secondary/20 hover:border-accent hover:shadow-[0_2px_8px_rgba(0,0,0,0.01)]"
-                    }`}
-                  >
-                    <div>
-                      {/* Dish Image */}
-                      {dish.imageUrl ? (
-                        <div className="h-40 overflow-hidden relative rounded-t-[9px] -mt-6 -mx-6 mb-4 border-b border-secondary/10">
-                          <img src={dish.imageUrl} alt={dish.name} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="h-40 overflow-hidden relative rounded-t-[9px] -mt-6 -mx-6 mb-4 border-b border-secondary/10 bg-gradient-to-br from-primary/10 to-accent/20 flex items-center justify-center">
-                          <span className="text-4xl">🍲</span>
-                        </div>
-                      )}
-
-                      {/* Name & Price */}
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h4 className={`font-bold tracking-wide text-sm ${isSoldOut ? "text-secondary" : "text-ink"}`}>
-                          {dish.name}
-                        </h4>
-                        <span className="font-bold text-ink text-sm shrink-0">
-                          KES {Number(dish.price).toLocaleString()}
-                        </span>
+            return (
+              <div key={dish.id} className="carousel-item" style={{ opacity: isSoldOut ? 0.65 : 1 }}>
+                <div className="card__inner" style={{ pointerEvents: isSoldOut ? "none" : "auto" }}>
+                  <div className="card__media">
+                    {dish.imageUrl ? (
+                      <>
+                        <img src={dish.imageUrl} className="front-img" alt={dish.name} />
+                        <img src={dish.imageUrl} className="hover-img" alt={dish.name} />
+                      </>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", backgroundColor: "rgba(114, 106, 99, 0.03)", color: "rgba(114, 106, 99, 0.25)" }}>
+                        <UtensilsCrossed size={52} strokeWidth={1.2} />
                       </div>
-
-                      {/* Description */}
-                      {dish.description && (
-                        <p className="text-xs text-secondary leading-relaxed mb-4">
-                          {dish.description}
-                        </p>
-                      )}
-
-                      {/* Tag Badges */}
-                      {dish.dietaryTags && dish.dietaryTags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-4">
-                          {dish.dietaryTags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="rounded bg-accent/15 border border-accent/30 px-2 py-0.5 text-[9px] text-ink font-bold uppercase tracking-wider"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Footer / Stepper & Trigger button */}
-                    <div className="mt-4 border-t border-secondary/10 pt-4">
-                      {/* Counters */}
-                      <div className="flex items-center justify-between text-xs text-secondary font-medium">
-                        <span>Portions remaining:</span>
-                        {isSoldOut ? (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#DC2626]/10 border border-[#DC2626]/40 text-[#DC2626]">
-                            SOLD OUT
-                          </span>
-                        ) : isLowStock ? (
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="font-semibold text-ink">
-                              {dish.liveQuantity} of {dish.preparedQuantity} left
-                            </span>
-                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-[#F0B429]/15 border border-[#F0B429]/40 text-[#C48000] animate-pulse">
-                              LOW STOCK
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="font-semibold text-ink">
-                            {dish.liveQuantity} of {dish.preparedQuantity} left
-                          </span>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => addToCart(dish)}
-                        disabled={isSoldOut}
-                        className={`w-full rounded-[10px] py-2.5 text-xs font-bold transition mt-4 ${
-                          isSoldOut
-                            ? "bg-secondary/10 border border-secondary/20 text-secondary cursor-not-allowed"
-                            : "bg-primary text-white hover:bg-accent hover:text-ink active:scale-[0.98]"
-                        }`}
-                      >
-                        {isSoldOut ? "Out of Stock" : "Add to Order"}
-                      </button>
-                    </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Right Column: Order Summary Card */}
-          <aside className="sticky top-24 bg-white border border-secondary/20 rounded-[10px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-            <h3 className="text-base font-bold text-ink mb-4 pb-3 border-b border-secondary/15 tracking-wide">
-              Order Summary
-            </h3>
-
-            {cart.length === 0 ? (
-              <div className="text-center py-12 text-secondary text-xs font-medium">
-                Your order is currently empty.
-              </div>
-            ) : (
-              <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
-                {cart.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between border-b border-secondary/10 pb-4"
-                  >
-                    <div>
-                      <h4 className="font-bold text-ink text-xs mb-1">{item.name}</h4>
-                      <div className="flex gap-2 text-[10px] text-secondary font-medium">
-                        <span>Unit: KES {item.price}</span>
-                        <span>·</span>
-                        <span className="text-primary font-bold">Total: KES {item.price * item.quantity}</span>
-                      </div>
+                  
+                  {isSoldOut && (
+                    <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(255,255,255,0.75)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--product-card-corner-radius)" }}>
+                      <span style={{ backgroundColor: "#DC2626", color: "#ffffff", padding: "6px 14px", borderRadius: "20px", fontSize: "10px", fontWeight: "700", letterSpacing: "0.1em", textTransform: "uppercase" }}>Sold Out</span>
                     </div>
-                    {/* Quantity Stepper */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => updateCartQuantity(item.id, -1)}
-                        className="h-6 w-6 rounded border border-secondary/35 flex items-center justify-center text-xs font-bold text-secondary hover:bg-secondary/5 transition"
-                      >
-                        -
-                      </button>
-                      <span className="text-xs font-bold text-ink min-w-4 text-center">{item.quantity}</span>
-                      <button
-                        onClick={() => updateCartQuantity(item.id, 1)}
-                        className="h-6 w-6 rounded border border-secondary/35 flex items-center justify-center text-xs font-bold text-secondary hover:bg-secondary/5 transition"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {cart.length > 0 && (
-              <div className="mt-6 border-t border-secondary/15 pt-5 space-y-4">
-                <div className="flex items-center justify-between font-bold text-xs text-secondary">
-                  <span>Grand Total Amount:</span>
-                  <span className="text-lg font-black text-primary">
-                    KES {cartTotal.toLocaleString()}
-                  </span>
+                  )}
                 </div>
                 
-                <button
-                  onClick={() => setIsReviewOpen(true)}
-                  className="w-full rounded-[10px] bg-primary py-3 text-xs font-bold text-white shadow-sm hover:bg-accent hover:text-ink transition"
-                >
-                  Proceed to checkout
-                </button>
+                <div className="card-info">
+                  <span className="product-brand">
+                    {dish.dietaryTags && dish.dietaryTags.length > 0 ? dish.dietaryTags.join(" · ") : "Cafeteria Lunch"}
+                  </span>
+                  
+                  <h3 className="product-title" style={{ minHeight: "36px" }}>{dish.name}</h3>
+                  
+                  {/* Portions indicator */}
+                  {!isSoldOut && (
+                    <div style={{ margin: "5px 0 10px", fontSize: "11px", color: "rgba(114, 106, 99, 0.75)", fontWeight: "600" }}>
+                      {isLowStock ? (
+                        <span style={{ color: "#C48000", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                          <AlertTriangle size={13} /> Only {dish.liveQuantity} portions left!
+                        </span>
+                      ) : (
+                        <span>Portions left: {dish.liveQuantity}</span>
+                      )}
+                    </div>
+                  )}
+                  
+                  <span className="product-price">KES {Number(dish.price).toFixed(2)}</span>
+                  
+                  <button 
+                    disabled={isSoldOut}
+                    onClick={() => addToCart(dish)} 
+                    className="cart-action-btn"
+                  >
+                    {isSoldOut ? "Out of Stock" : "Add to Order"}
+                  </button>
+                </div>
               </div>
-            )}
-          </aside>
+            );
+          })}
         </div>
       </main>
 
-      {/* Review & Checkout Modal */}
-      {isReviewOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-[10px] border border-secondary/20 bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto text-ink">
-            <h3 className="text-base font-bold text-ink mb-4 tracking-wide text-center">
-              Order Confirmation
-            </h3>
+      {/* FILTER SIDEBAR / DRAWER */}
+      {filterDrawerOpen && <div className="drawer-overlay open" onClick={() => setFilterDrawerOpen(false)}></div>}
+      <div className={`filter-drawer ${filterDrawerOpen ? "open" : ""}`} id="filter-sidebar">
+        <div className="drawer-header">
+          <h2 className="drawer-title">Filters</h2>
+          <button className="drawer-close" onClick={() => setFilterDrawerOpen(false)} aria-label="Close filters">
+            <svg viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke="currentColor" fill="none"/></svg>
+          </button>
+        </div>
+        
+        <div className="drawer-content">
+          {/* Dietary tags accordion */}
+          <div className="accordion-section active">
+            <button className="accordion-trigger">
+              <span>Dietary Profile</span>
+            </button>
+            <div className="accordion-content" style={{ display: "block" }}>
+              <ul className="filter-options-list">
+                {DIETARY_FILTERS.map((tag) => (
+                  <li key={tag} className="filter-item">
+                    <input 
+                      type="checkbox" 
+                      className="filter-checkbox" 
+                      id={`tag-${tag}`} 
+                      checked={selectedTags.includes(tag)}
+                      onChange={() => toggleTag(tag)}
+                    />
+                    <label htmlFor={`tag-${tag}`} style={{ fontSize: "12px", cursor: "pointer" }}>{tag}</label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
 
-            {/* Bill items list */}
-            <div className="border-b border-secondary/15 pb-4 mb-4 space-y-3">
+          {/* Price Range accordion */}
+          <div className="accordion-section active">
+            <button className="accordion-trigger">
+              <span>Price Range</span>
+            </button>
+            <div className="accordion-content" style={{ display: "block" }}>
+              <div className="price-range-inputs" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 0" }}>
+                <div className="price-input-wrapper" style={{ position: "relative", flex: 1 }}>
+                  <span className="currency-symbol" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "rgba(114, 106, 99, 0.5)" }}>KES</span>
+                  <input 
+                    type="number" 
+                    className="price-field" 
+                    placeholder="Min"
+                    value={priceMin}
+                    onChange={(e) => setPriceMin(e.target.value)}
+                    style={{ width: "100%", padding: "8px 12px 8px 45px", border: "1px solid rgba(114,106,99,0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
+                  />
+                </div>
+                <span style={{ color: "rgba(114, 106, 99, 0.5)", fontSize: "12px" }}>to</span>
+                <div className="price-input-wrapper" style={{ position: "relative", flex: 1 }}>
+                  <span className="currency-symbol" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "rgba(114, 106, 99, 0.5)" }}>KES</span>
+                  <input 
+                    type="number" 
+                    className="price-field" 
+                    placeholder="Max"
+                    value={priceMax}
+                    onChange={(e) => setPriceMax(e.target.value)}
+                    style={{ width: "100%", padding: "8px 12px 8px 45px", border: "1px solid rgba(114,106,99,0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="drawer-footer">
+          <button className="clear-filters-btn" onClick={() => { setSelectedTags([]); setPriceMin(""); setPriceMax(""); setFilterDrawerOpen(false); }}>
+            Clear Filters
+          </button>
+        </div>
+      </div>
+
+      {/* CART DRAWER */}
+      {cartDrawerOpen && <div className="drawer-overlay open" onClick={() => setCartDrawerOpen(false)}></div>}
+      <div className={`filter-drawer ${cartDrawerOpen ? "open" : ""}`} id="cart-drawer">
+        <div className="drawer-header">
+          <h2 className="drawer-title">Review Order</h2>
+          <button className="drawer-close" onClick={() => setCartDrawerOpen(false)} aria-label="Close cart">
+            <svg viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke="currentColor" fill="none"/></svg>
+          </button>
+        </div>
+        
+        <div className="drawer-content">
+          {cart.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "rgba(114, 106, 99, 0.7)", fontSize: "13px" }}>
+              Your checkout order cart is empty.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               {cart.map((item) => (
-                <div key={item.id} className="flex justify-between text-xs text-secondary font-medium">
-                  <span>
-                    {item.name} <span className="text-[10px] font-bold text-primary">x{item.quantity}</span>
-                  </span>
-                  <span className="font-bold text-ink">
-                    KES {(item.price * item.quantity).toLocaleString()}
+                <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "start", borderBottom: "1px solid rgba(114,106,99,0.1)", paddingBottom: "15px" }}>
+                  <div style={{ flex: 1, paddingRight: "10px" }}>
+                    <h4 style={{ fontSize: "13px", fontWeight: "700", color: "#726a63" }}>{item.name}</h4>
+                    <span style={{ fontSize: "11px", color: "rgba(114,106,99,0.8)" }}>
+                      Unit: KES {item.price.toFixed(2)} | Total: KES {(item.price * item.quantity).toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  {/* Stepper */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <button 
+                      onClick={() => updateCartQuantity(item.id, -1)}
+                      style={{ width: "24px", height: "24px", borderRadius: "50%", border: "1px solid rgba(114,106,99,0.3)", backgroundColor: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >-</button>
+                    <span style={{ fontSize: "13px", fontWeight: "700", minWidth: "15px", textAlign: "center" }}>{item.quantity}</span>
+                    <button 
+                      onClick={() => updateCartQuantity(item.id, 1)}
+                      style={{ width: "24px", height: "24px", borderRadius: "50%", border: "1px solid rgba(114,106,99,0.3)", backgroundColor: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >+</button>
+                  </div>
+                </div>
+              ))}
+
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: "700", marginTop: "10px" }}>
+                <span>Subtotal:</span>
+                <span>KES {cartTotal.toFixed(2)}</span>
+              </div>
+
+              {/* Loyalty Point Input */}
+              {loyaltyStatus && loyaltyStatus.pointsBalance >= 50 && (
+                <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "15px", padding: "15px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", fontWeight: "700", marginBottom: "8px" }}>
+                    <span>Redeem points (1pt = KES 1)</span>
+                    <span style={{ color: "#b7786b" }}>Max: {loyaltyStatus.pointsBalance} pts</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input 
+                      type="number"
+                      value={pointsToRedeemInput}
+                      onChange={(e) => {
+                        const valStr = e.target.value;
+                        setPointsToRedeemInput(valStr);
+                        const val = Number(valStr);
+                        if (valStr === "") { setRedeemError(""); return; }
+                        if (isNaN(val) || val < 0) { setRedeemError("Invalid points."); return; }
+                        if (val > 0) {
+                          if (loyaltyStatus.status === "FROZEN") { setRedeemError("Account is frozen."); return; }
+                          if (val < 50) { setRedeemError("Min 50 pts required."); return; }
+                          if (val > loyaltyStatus.pointsBalance) { setRedeemError("Insufficient points."); return; }
+                          const maxRedeem = Math.floor(cartTotal * 0.3);
+                          if (val > maxRedeem) { setRedeemError(`Max points: ${maxRedeem} (30% of order).`); return; }
+                        }
+                        setRedeemError("");
+                      }}
+                      placeholder="Min 50 pts"
+                      style={{ flex: 1, padding: "8px 12px", border: "1px solid rgba(114,106,99,0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
+                    />
+                    {pointsToRedeemInput && (
+                      <button onClick={() => { setPointsToRedeemInput(""); setRedeemError(""); }} className="slide-btn" style={{ padding: "8px 15px", fontSize: "10px" }}>Clear</button>
+                    )}
+                  </div>
+                  {redeemError && <p style={{ fontSize: "10px", color: "#DC2626", marginTop: "5px", fontWeight: "600" }}>{redeemError}</p>}
+                  {!redeemError && pointsToRedeemInput && <p style={{ fontSize: "10px", color: "#10B981", marginTop: "5px", fontWeight: "600" }}>✓ Discount: KES {Number(pointsToRedeemInput).toFixed(2)}</p>}
+                </div>
+              )}
+
+              {/* Wallet Integration Toggle */}
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "15px", padding: "15px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <label htmlFor="useWalletCheckbox" style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}>
+                    <input 
+                      type="checkbox"
+                      id="useWalletCheckbox"
+                      checked={useWallet}
+                      onChange={(e) => setUseWallet(e.target.checked)}
+                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                    />
+                    <span>Use Wallet Balance</span>
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#b7786b", fontWeight: "700" }}>Avail: KES {walletBalance.toFixed(2)}</span>
+                </div>
+
+                <div style={{ borderTop: "1px solid rgba(114,106,99,0.1)", paddingTop: "10px", fontSize: "11px", color: "rgba(114,106,99,0.8)" }}>
+                  {useWallet ? (
+                    walletBalance >= (cartTotal - pointsToRedeem) ? (
+                      <div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span>From Wallet:</span>
+                          <span style={{ color: "#10B981", fontWeight: "700" }}>- KES {(cartTotal - pointsToRedeem).toFixed(2)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", color: "#726a63", fontSize: "12px", borderTop: "1px solid rgba(114,106,99,0.1)", paddingTop: "5px", marginTop: "5px" }}>
+                          <span>Remaining M-Pesa:</span>
+                          <span>KES 0.00</span>
+                        </div>
+                        <p style={{ color: "#10B981", fontSize: "9px", marginTop: "5px", fontStyle: "italic" }}>✓ Fully covered by wallet balance</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span>From Wallet:</span>
+                          <span style={{ color: "#10B981", fontWeight: "700" }}>- KES {walletBalance.toFixed(2)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", color: "#726a63", fontSize: "12px", borderTop: "1px solid rgba(114,106,99,0.1)", paddingTop: "5px", marginTop: "5px" }}>
+                          <span>Remaining M-Pesa STK:</span>
+                          <span style={{ color: "#b7786b" }}>KES {((cartTotal - pointsToRedeem) - walletBalance).toFixed(2)}</span>
+                        </div>
+                        <p style={{ color: "#C48000", fontSize: "9px", marginTop: "5px", fontStyle: "italic", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                          <Info size={11} /> Split payment will trigger M-Pesa prompt
+                        </p>
+                      </div>
+                    )
+                  ) : (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", color: "#726a63", fontSize: "12px" }}>
+                      <span>M-Pesa STK Push:</span>
+                      <span style={{ color: "#b7786b" }}>KES {(cartTotal - pointsToRedeem).toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ fontSize: "10px", color: "rgba(114,106,99,0.7)", backgroundColor: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.15)", borderRadius: "10px", padding: "10px", lineHeight: "1.5", fontWeight: "600" }}>
+                * Portions will be dynamically locked upon checkout. Secure payment immediately to keep your pre-order valid.
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {cart.length > 0 && (
+          <div className="drawer-footer" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: "700", marginBottom: "5px" }}>
+              <span>Total Price Due:</span>
+              <span style={{ color: "#b7786b" }}>KES {Math.max(0, cartTotal - pointsToRedeem).toFixed(2)}</span>
+            </div>
+            <button 
+              disabled={checkoutLoading || !!redeemError} 
+              onClick={handleCheckout} 
+              className="clear-filters-btn" 
+              style={{ backgroundColor: "rgb(var(--color-button))", color: "#ffffff", border: "none" }}
+            >
+              {checkoutLoading ? "Locking portions..." : "Confirm & Checkout"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* LOYALTY HISTORY DRAWER */}
+      {loyaltyDrawerOpen && <div className="drawer-overlay open" onClick={() => setLoyaltyDrawerOpen(false)}></div>}
+      <div className={`filter-drawer ${loyaltyDrawerOpen ? "open" : ""}`} id="loyalty-drawer">
+        <div className="drawer-header">
+          <h2 className="drawer-title">Loyalty Account</h2>
+          <button className="drawer-close" onClick={() => setLoyaltyDrawerOpen(false)} aria-label="Close loyalty">
+            <svg viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke="currentColor" fill="none"/></svg>
+          </button>
+        </div>
+        
+        <div className="drawer-content">
+          {loyaltyStatus && (
+            <div style={{ backgroundColor: "rgba(183, 120, 107, 0.08)", border: "1px solid #b7786b", borderRadius: "15px", padding: "18px", marginBottom: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: "700" }}>
+                <span>Tier Level:</span>
+                <span style={{ color: "#b7786b" }}>{loyaltyStatus.tier}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: "700" }}>
+                <span>Balance:</span>
+                <span style={{ color: "#b7786b" }}>{loyaltyStatus.pointsBalance} points</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "rgba(114, 106, 99, 0.8)", fontWeight: "600" }}>
+                <span>Next Tier ({loyaltyStatus.nextTier}):</span>
+                <span>{loyaltyStatus.progressToNextTier}% progress</span>
+              </div>
+              <div style={{ width: "100%", height: "6px", backgroundColor: "rgba(114,106,99,0.15)", borderRadius: "3px", overflow: "hidden" }}>
+                <div style={{ width: `${loyaltyStatus.progressToNextTier}%`, height: "100%", backgroundColor: "#b7786b" }}></div>
+              </div>
+            </div>
+          )}
+
+          <h3 style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114,106,99,0.8)", marginBottom: "15px" }}>Transaction History</h3>
+
+          {loyaltyHistory.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "30px 10px", color: "rgba(114, 106, 99, 0.7)", fontSize: "12px" }}>
+              No loyalty transactions recorded yet.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+              {loyaltyHistory.map((tx) => (
+                <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(114,106,99,0.08)", paddingBottom: "12px", fontSize: "12px" }}>
+                  <div>
+                    <div style={{ fontWeight: "700", color: "#726a63" }}>
+                      {tx.transactionType === "EARN" ? "Points Earned" :
+                       tx.transactionType === "REDEEM" ? "Points Redeemed" :
+                       tx.transactionType === "REFUND_DEDUCT" ? "Points Deducted (Refund)" :
+                       tx.transactionType === "REFUND_RETURN" ? "Points Restored" : tx.transactionType}
+                    </div>
+                    <span style={{ fontSize: "10px", color: "rgba(114,106,99,0.7)" }}>
+                      {new Date(tx.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: "13px", fontWeight: "900", color: tx.amount > 0 ? "#10B981" : "#DC2626" }}>
+                    {tx.amount > 0 ? `+${tx.amount}` : tx.amount} pts
                   </span>
                 </div>
               ))}
             </div>
-
-            <div className="flex justify-between text-xs text-secondary font-medium mb-2">
-              <span>Subtotal:</span>
-              <span className="font-bold text-ink">KES {cartTotal.toLocaleString()}</span>
-            </div>
-
-            {/* Loyalty points input */}
-            {loyaltyStatus && loyaltyStatus.pointsBalance >= 50 && (
-              <div className="bg-background border border-secondary/20 rounded-[10px] p-4 mb-4 space-y-3">
-                <div className="flex justify-between items-center text-xs font-bold text-ink">
-                  <span>Redeem Loyalty Points (1 pt = KES 1.00)</span>
-                  <span className="text-[10px] text-primary">Available: {loyaltyStatus.pointsBalance} pts</span>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    value={pointsToRedeemInput}
-                    onChange={(e) => {
-                      const valStr = e.target.value;
-                      setPointsToRedeemInput(valStr);
-                      const val = Number(valStr);
-                      if (valStr === "") {
-                        setRedeemError("");
-                        return;
-                      }
-                      if (isNaN(val) || val < 0) {
-                        setRedeemError("Invalid points amount.");
-                        return;
-                      }
-                      if (val > 0) {
-                        if (loyaltyStatus.status === "FROZEN") {
-                          setRedeemError("Your loyalty account is frozen.");
-                          return;
-                        }
-                        if (val < 50) {
-                          setRedeemError("Minimum 50 points required to redeem.");
-                          return;
-                        }
-                        if (val > loyaltyStatus.pointsBalance) {
-                          setRedeemError(`Insufficient points. You have ${loyaltyStatus.pointsBalance} points.`);
-                          return;
-                        }
-                        const maxRedeem = Math.floor(cartTotal * 0.3);
-                        if (val > maxRedeem) {
-                          setRedeemError(`Maximum redemption cannot exceed 30% of order (Max: ${maxRedeem} points).`);
-                          return;
-                        }
-                      }
-                      setRedeemError("");
-                    }}
-                    placeholder="Enter points (min 50)"
-                    className="flex-1 rounded border border-secondary/35 bg-transparent px-3 py-1.5 text-xs font-bold text-ink focus:border-primary focus:outline-none"
-                  />
-                  {pointsToRedeemInput && (
-                    <button
-                      onClick={() => {
-                        setPointsToRedeemInput("");
-                        setRedeemError("");
-                      }}
-                      className="rounded border border-secondary/30 px-3 text-xs font-bold text-secondary hover:bg-secondary/5"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {redeemError && (
-                  <p className="text-[10px] text-rose-600 font-semibold">{redeemError}</p>
-                )}
-                {!redeemError && pointsToRedeemInput && (
-                  <p className="text-[10px] text-emerald-600 font-semibold">
-                    ✓ Applied: KES {Number(pointsToRedeemInput).toFixed(2)} discount.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {pointsToRedeem > 0 && !redeemError && (
-              <div className="flex justify-between text-xs text-secondary font-medium mb-4">
-                <span>Loyalty Points Discount:</span>
-                <span className="font-bold text-rose-600">- KES {pointsToRedeem.toLocaleString()}</span>
-              </div>
-            )}
-
-            <div className="flex justify-between text-sm font-bold mb-6 border-t border-secondary/15 pt-3">
-              <span>Total Price Due:</span>
-              <span className="text-primary font-extrabold text-base">KES {(cartTotal - pointsToRedeem).toLocaleString()}</span>
-            </div>
-
-            {/* Wallet Selection & Bill Breakdown */}
-            <div className="bg-background border border-secondary/20 rounded-[10px] p-4 mb-6 space-y-4 text-secondary">
-              <div className="flex items-center justify-between">
-                <label htmlFor="useWalletCheckbox" className="flex items-center gap-3 cursor-pointer select-none text-xs font-bold text-ink">
-                  <input
-                    type="checkbox"
-                    id="useWalletCheckbox"
-                    checked={useWallet}
-                    onChange={(e) => setUseWallet(e.target.checked)}
-                    className="h-4 w-4 rounded border-secondary/40 text-primary focus:ring-primary"
-                  />
-                  <span>Use Wallet Balance</span>
-                </label>
-                <span className="text-[10px] font-bold text-primary">
-                  Available: KES {walletBalance.toFixed(2)}
-                </span>
-              </div>
-
-              <div className="border-t border-secondary/15 pt-3 space-y-2 text-[11px] font-medium">
-                {useWallet ? (
-                  walletBalance >= (cartTotal - pointsToRedeem) ? (
-                    <div className="flex flex-col gap-1">
-                      <div className="flex justify-between">
-                        <span>Deducted from Wallet:</span>
-                        <span className="font-bold text-emerald-600">- KES {(cartTotal - pointsToRedeem).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-xs text-ink mt-1 border-t border-secondary/15 pt-1">
-                        <span>Remaining M-Pesa STK:</span>
-                        <span>KES 0.00</span>
-                      </div>
-                      <p className="text-secondary/70 text-[9px] mt-1 italic font-semibold">
-                        ✓ Fully covered. No M-Pesa prompt will be triggered.
-                      </p>
-                    </div>
-                  ) : walletBalance > 0 ? (
-                    <div className="flex flex-col gap-1">
-                      <div className="flex justify-between">
-                        <span>Deducted from Wallet:</span>
-                        <span className="font-bold text-emerald-600">- KES {walletBalance.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-xs text-ink mt-1 border-t border-secondary/15 pt-1">
-                        <span>Remaining M-Pesa STK:</span>
-                        <span className="text-primary font-extrabold">KES {((cartTotal - pointsToRedeem) - walletBalance).toFixed(2)}</span>
-                      </div>
-                      <p className="text-secondary/70 text-[9px] mt-1 font-semibold italic">
-                        ⚠ Split Payment: You will receive an M-Pesa prompt for the remaining amount.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-1">
-                      <div className="flex justify-between">
-                        <span>Deducted from Wallet:</span>
-                        <span>KES 0.00</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-xs text-ink mt-1 border-t border-secondary/15 pt-1">
-                        <span>M-Pesa STK Push:</span>
-                        <span className="text-primary font-extrabold">KES {(cartTotal - pointsToRedeem).toFixed(2)}</span>
-                      </div>
-                      <p className="text-secondary/70 text-[9px] mt-1 font-semibold">
-                        Wallet is empty. Full amount paid via M-Pesa.
-                      </p>
-                    </div>
-                  )
-                ) : (
-                  <div className="flex flex-col gap-1">
-                    <div className="flex justify-between font-bold text-xs text-ink">
-                      <span>M-Pesa STK Push:</span>
-                      <span className="text-primary font-extrabold">KES {(cartTotal - pointsToRedeem).toFixed(2)}</span>
-                    </div>
-                    <p className="text-secondary/70 text-[9px] mt-1 font-semibold">
-                      Full amount will be paid via M-Pesa STK Push.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-[10px] bg-[#DC2626]/5 border border-[#DC2626]/20 p-4 mb-6 text-xs text-secondary leading-relaxed font-semibold">
-              <strong>Order locking notice:</strong> By confirming, portions will be atomically locked. You must proceed to complete payment to secure your pre-order.
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsReviewOpen(false)}
-                disabled={checkoutLoading}
-                className="flex-1 rounded-[10px] border border-secondary/30 py-3 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
-              >
-                Go Back
-              </button>
-              <button
-                onClick={handleCheckout}
-                disabled={checkoutLoading || !!redeemError}
-                className="flex-1 rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                {checkoutLoading ? "Confirming Portions..." : "Confirm & Checkout"}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
 
-      {/* M-Pesa Pending Overlay Modal */}
+        <div className="drawer-footer">
+          <button className="clear-filters-btn" onClick={() => setLoyaltyDrawerOpen(false)}>Close Panel</button>
+        </div>
+      </div>
+
+      {/* M-PESA PENDING VERIFICATION OVERLAY */}
       {paymentStatus !== "IDLE" && paymentStatus !== "SUCCESS" && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-[10px] border border-secondary/20 bg-white p-8 shadow-xl text-center space-y-6">
+        <div style={{ position: "fixed", inset: 0, zIndex: 150, backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div style={{ width: "100%", maxWidth: "450px", backgroundColor: "#ffffff", border: "1px solid rgba(114,106,99,0.15)", borderRadius: "20px", padding: "40px", textAlign: "center", boxShadow: "0 15px 50px rgba(0,0,0,0.06)", fontFamily: "Libre Franklin" }}>
+            
             {paymentStatus === "PENDING" && (
-              <>
-                <div className="relative h-20 w-20 mx-auto">
-                  <div className="absolute inset-0 rounded-full border-4 border-emerald-500/10"></div>
-                  <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
-                  <div className="absolute inset-0 flex items-center justify-center font-bold text-primary text-xs">
-                    M-Pesa
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold text-ink tracking-wide">
-                  Awaiting Payment Approval
-                </h3>
-                <p className="text-xs text-secondary leading-relaxed font-medium">
-                  We sent an M-Pesa STK Push prompt to your registered number. Please enter your PIN on your phone to complete the transaction.
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
+                <div style={{ border: "4px solid #b7786b", borderTopColor: "transparent", borderRadius: "50%", width: "48px", height: "48px", animation: "spin 1s linear infinite" }}></div>
+                <h3 style={{ fontFamily: "DM Serif Display", fontSize: "22px", color: "#726a63", fontWeight: 400 }}>Awaiting Payment Approval</h3>
+                <p style={{ fontSize: "12px", color: "rgba(114,106,99,0.85)", lineHeight: "1.6" }}>
+                  An M-Pesa STK Push has been sent to your phone. Enter your Safaricom PIN to authorize the transaction.
                 </p>
-                
-                <div className="rounded-[10px] bg-background border border-secondary/20 p-4 text-xs text-left text-secondary space-y-2">
-                  <div className="flex justify-between">
-                    <span>Target Shortcode:</span>
-                    <span className="font-semibold text-ink">174379 (CafeQ)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Amount Due via M-Pesa:</span>
-                    <span className="font-bold text-primary">KES {paymentAmountToPrompt.toLocaleString()}</span>
-                  </div>
+                <div style={{ border: "1px solid rgba(114,106,99,0.15)", borderRadius: "12px", padding: "12px 20px", width: "100%", fontSize: "12px", display: "flex", justifyContent: "space-between" }}>
+                  <span>Amount Due via M-Pesa:</span>
+                  <span style={{ fontWeight: "700", color: "#b7786b" }}>KES {paymentAmountToPrompt.toLocaleString()}</span>
                 </div>
-
-                <div className="text-[10px] text-secondary/70 italic animate-pulse font-semibold">
-                  Verifying transaction state automatically...
-                </div>
-
-                <button
-                  onClick={cancelPaymentVerification}
-                  className="w-full rounded-[10px] border border-secondary/35 py-3 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
-                >
-                  Cancel & Edit Order
-                </button>
-              </>
+                <span style={{ fontSize: "10px", color: "rgba(114, 106, 99, 0.6)", fontStyle: "italic", animation: "pulse 1.5s infinite" }}>Verifying status automatically...</span>
+                <button onClick={cancelPaymentVerification} className="slide-btn" style={{ width: "100%" }}>Cancel & Edit Order</button>
+              </div>
             )}
 
             {paymentStatus === "FAILED" && (
-              <>
-                <div className="h-16 w-16 rounded-full bg-[#DC2626]/10 border border-[#DC2626]/30 text-[#DC2626] flex items-center justify-center mx-auto text-2xl font-bold">
-                  ✕
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "700" }}>✕</div>
+                <h3 style={{ fontFamily: "DM Serif Display", fontSize: "22px", color: "#726a63", fontWeight: 400 }}>Payment Failed</h3>
+                <p style={{ fontSize: "12px", color: "#DC2626", fontWeight: "600" }}>{paymentError || "The M-Pesa transaction was cancelled or declined."}</p>
+                <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                  <button onClick={() => pendingOrderId && processCheckoutPayment(pendingOrderId, cartTotal, useWallet)} className="slide-btn" style={{ flex: 1 }}>Retry</button>
+                  <button onClick={cancelPaymentVerification} className="slide-btn" style={{ flex: 1, backgroundColor: "transparent", color: "#726a63", border: "1px solid rgba(114,106,99,0.3)", boxShadow: "none" }}>Cancel</button>
                 </div>
-                <h3 className="text-xl font-bold text-ink tracking-wide">
-                  Payment Failed
-                </h3>
-                <p className="text-xs text-secondary leading-relaxed font-medium">
-                  {paymentError || "The M-Pesa transaction was cancelled or declined."}
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => pendingOrderId && processCheckoutPayment(pendingOrderId, cartTotal, useWallet)}
-                    className="flex-1 rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
-                  >
-                    Retry Payment
-                  </button>
-                  <button
-                    onClick={cancelPaymentVerification}
-                    className="flex-1 rounded-[10px] border border-secondary/30 py-3 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </>
+              </div>
             )}
 
             {paymentStatus === "TIMEOUT" && (
-              <>
-                <div className="h-16 w-16 rounded-full bg-[#F0B429]/10 border border-[#F0B429]/30 text-[#C48000] flex items-center justify-center mx-auto text-2xl font-bold">
-                  !
-                </div>
-                <h3 className="text-xl font-bold text-ink tracking-wide">
-                  Verification Timeout
-                </h3>
-                <p className="text-xs text-secondary leading-relaxed font-medium">
-                  We did not receive a payment confirmation in time. If you entered your PIN, check your order history later.
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "rgba(196,128,0,0.1)", border: "1px solid rgba(196,128,0,0.3)", color: "#C48000", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "700" }}>!</div>
+                <h3 style={{ fontFamily: "DM Serif Display", fontSize: "22px", color: "#726a63", fontWeight: 400 }}>Verification Timeout</h3>
+                <p style={{ fontSize: "12px", color: "rgba(114, 106, 99, 0.8)", lineHeight: "1.6" }}>
+                  We did not receive a confirmation in time. If you approved the request, check your dashboard transactions shortly.
                 </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => pendingOrderId && processCheckoutPayment(pendingOrderId, cartTotal, useWallet)}
-                    className="flex-1 rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
-                  >
-                    Check / Retry
-                  </button>
-                  <button
-                    onClick={cancelPaymentVerification}
-                    className="flex-1 rounded-[10px] border border-secondary/30 py-3 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
-                  >
-                    Cancel
-                  </button>
+                <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                  <button onClick={() => pendingOrderId && processCheckoutPayment(pendingOrderId, cartTotal, useWallet)} className="slide-btn" style={{ flex: 1 }}>Check / Retry</button>
+                  <button onClick={cancelPaymentVerification} className="slide-btn" style={{ flex: 1, backgroundColor: "transparent", color: "#726a63", border: "1px solid rgba(114,106,99,0.3)", boxShadow: "none" }}>Cancel</button>
                 </div>
-              </>
+              </div>
             )}
+
           </div>
         </div>
       )}
 
-      {/* Wallet Top-Up Modal */}
+      {/* WALLET TOP UP MODAL */}
       {isTopUpOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-[10px] border border-secondary/20 bg-white p-6 shadow-xl text-ink">
-            <div className="flex items-center justify-between border-b border-secondary/15 pb-4 mb-6">
-              <h3 className="text-base font-bold text-ink tracking-wide">Top Up Wallet</h3>
-              <button
-                onClick={() => {
-                  if (topUpStatus !== "PENDING") {
-                    setIsTopUpOpen(false);
-                  }
-                }}
+        <div style={{ position: "fixed", inset: 0, zIndex: 150, backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div style={{ width: "100%", maxWidth: "450px", backgroundColor: "#ffffff", border: "1px solid rgba(114,106,99,0.15)", borderRadius: "20px", padding: "30px", boxShadow: "0 15px 50px rgba(0,0,0,0.06)", fontFamily: "Libre Franklin", color: "#726a63" }}>
+            
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(114,106,99,0.1)", paddingBottom: "15px", marginBottom: "25px" }}>
+              <h3 style={{ fontFamily: "DM Serif Display", fontSize: "20px", fontWeight: 400 }}>Top Up Wallet</h3>
+              <button 
+                onClick={() => { if (topUpStatus !== "PENDING") setIsTopUpOpen(false); }} 
                 disabled={topUpStatus === "PENDING"}
-                className={`text-secondary hover:text-ink text-lg font-bold ${topUpStatus === "PENDING" ? "opacity-30 cursor-not-allowed" : ""}`}
-              >
-                ✕
-              </button>
+                style={{ background: "none", border: "none", cursor: topUpStatus === "PENDING" ? "not-allowed" : "pointer", fontSize: "18px", color: "inherit", fontWeight: "700" }}
+              >✕</button>
             </div>
 
             {topUpStatus === "IDLE" && (
-              <form onSubmit={handleWalletTopUp} className="space-y-6">
+              <form onSubmit={handleWalletTopUp} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                 <div>
-                  <label htmlFor="topUpAmountInput" className="block text-[10px] font-bold text-secondary uppercase tracking-wider mb-2">
-                    Enter Amount (KES)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-secondary/70 text-xs">KES</span>
-                    <input
+                  <label htmlFor="topUpAmountInput" style={{ display: "block", fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>Enter Amount (KES)</label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: "15px", top: "50%", transform: "translateY(-50%)", fontSize: "12px", fontWeight: "700", color: "rgba(114,106,99,0.6)" }}>KES</span>
+                    <input 
                       type="number"
                       id="topUpAmountInput"
                       value={topUpAmount}
                       onChange={(e) => setTopUpAmount(e.target.value)}
                       placeholder="e.g. 500"
                       min="1"
-                      className="w-full rounded-[10px] border border-secondary/30 bg-transparent pl-12 pr-4 py-3 text-sm font-bold text-ink focus:border-primary focus:outline-none transition"
                       required
+                      style={{ width: "100%", padding: "12px 15px 12px 50px", border: "1px solid rgba(114,106,99,0.3)", borderRadius: "30px", fontSize: "13px", fontWeight: "700", outline: "none", backgroundColor: "transparent" }}
                     />
                   </div>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={topUpLoading}
-                  className="w-full rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  {topUpLoading ? "Initiating STK Push..." : "Trigger M-Pesa Top Up"}
-                </button>
+                <button type="submit" className="slide-btn" style={{ width: "100%" }}>Trigger M-Pesa Top Up</button>
               </form>
             )}
 
             {topUpStatus === "PENDING" && (
-              <div className="text-center py-6 space-y-6">
-                <div className="relative h-20 w-20 mx-auto">
-                  <div className="absolute inset-0 rounded-full border-4 border-emerald-500/10"></div>
-                  <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
-                  <div className="absolute inset-0 flex items-center justify-center font-bold text-primary text-xs">
-                    M-Pesa
-                  </div>
-                </div>
-                <h4 className="text-sm font-bold text-ink">Awaiting PIN Confirmation</h4>
-                <p className="text-xs text-secondary leading-relaxed px-4 font-medium">
-                  We sent an STK Push to your M-Pesa number. Complete the prompt on your phone to top up KES {Number(topUpAmount).toLocaleString()}.
+              <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
+                <div style={{ border: "4px solid #b7786b", borderTopColor: "transparent", borderRadius: "50%", width: "48px", height: "48px", animation: "spin 1s linear infinite" }}></div>
+                <h4 style={{ fontSize: "14px", fontWeight: "700" }}>Awaiting PIN Confirmation</h4>
+                <p style={{ fontSize: "12px", color: "rgba(114,106,99,0.85)", lineHeight: "1.6" }}>
+                  An M-Pesa STK Push has been triggered. Please authorize the KES {Number(topUpAmount).toLocaleString()} top-up prompt on your phone.
                 </p>
-                <div className="text-[10px] text-secondary/70 italic animate-pulse font-semibold">
-                  Verifying transaction state automatically...
-                </div>
-                <button
-                  onClick={cancelTopUpVerification}
-                  className="rounded-[10px] border border-secondary/35 px-4 py-2 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
-                >
-                  Cancel Polling
-                </button>
+                <span style={{ fontSize: "10px", color: "rgba(114,106,99,0.6)", fontStyle: "italic", animation: "pulse 1.5s infinite" }}>Verifying status automatically...</span>
+                <button onClick={cancelTopUpVerification} className="slide-btn" style={{ width: "100%", backgroundColor: "transparent", color: "#726a63", border: "1px solid rgba(114,106,99,0.3)", boxShadow: "none" }}>Cancel Polling</button>
               </div>
             )}
 
             {topUpStatus === "SUCCESS" && (
-              <div className="text-center py-6 space-y-6">
-                <div className="h-16 w-16 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-600 flex items-center justify-center mx-auto text-2xl font-bold">
-                  ✓
-                </div>
-                <h4 className="text-sm font-bold text-ink">Wallet Loaded Successfully!</h4>
-                <p className="text-xs text-secondary px-4 font-medium">
-                  Successfully credited <span className="text-emerald-600 font-bold">KES {Number(topUpAmount).toLocaleString()}</span> to your CaféQ wallet.
+              <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "700" }}>✓</div>
+                <h4 style={{ fontSize: "14px", fontWeight: "700" }}>Wallet Loaded Successfully!</h4>
+                <p style={{ fontSize: "12px", color: "rgba(114,106,99,0.85)" }}>
+                  Successfully credited <span style={{ color: "#10B981", fontWeight: "700" }}>KES {Number(topUpAmount).toLocaleString()}</span> to your CaféQ wallet.
                 </p>
                 {topUpReceipt && (
-                  <div className="inline-block bg-background border border-secondary/20 rounded px-3 py-1 font-mono text-[9px] text-secondary">
-                    Receipt: <span className="text-emerald-600 font-bold">{topUpReceipt}</span>
+                  <div style={{ backgroundColor: "#f8f7f6", border: "1px solid rgba(114,106,99,0.15)", borderRadius: "5px", padding: "5px 12px", fontSize: "10px", fontFamily: "monospace" }}>
+                    Receipt Code: <span style={{ color: "#10B981", fontWeight: "700" }}>{topUpReceipt}</span>
                   </div>
                 )}
-                <button
-                  onClick={() => setIsTopUpOpen(false)}
-                  className="w-full rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
-                >
-                  Done
-                </button>
+                <button onClick={() => setIsTopUpOpen(false)} className="slide-btn" style={{ width: "100%" }}>Done</button>
               </div>
             )}
 
             {topUpStatus === "FAILED" && (
-              <div className="text-center py-6 space-y-6">
-                <div className="h-16 w-16 rounded-full bg-[#DC2626]/10 border border-[#DC2626]/30 text-[#DC2626] flex items-center justify-center mx-auto text-2xl font-bold">
-                  ✕
-                </div>
-                <h4 className="text-sm font-bold text-ink">Top Up Failed</h4>
-                <p className="text-xs text-[#DC2626] px-4 leading-relaxed font-semibold">
-                  {topUpError || "The M-Pesa transaction was cancelled or declined."}
-                </p>
-                <div className="flex gap-3 px-4">
-                  <button
-                    onClick={() => {
-                      setTopUpStatus("IDLE");
-                      setTopUpError("");
-                    }}
-                    className="flex-1 rounded-[10px] bg-primary py-2.5 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
-                  >
-                    Try Again
-                  </button>
-                  <button
-                    onClick={() => setIsTopUpOpen(false)}
-                    className="flex-1 rounded-[10px] border border-secondary/30 py-2.5 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
-                  >
-                    Close
-                  </button>
+              <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "700" }}>✕</div>
+                <h4 style={{ fontSize: "14px", fontWeight: "700" }}>Top Up Failed</h4>
+                <p style={{ fontSize: "12px", color: "#DC2626", fontWeight: "600" }}>{topUpError || "The M-Pesa transaction was cancelled or declined."}</p>
+                <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                  <button onClick={() => { setTopUpStatus("IDLE"); setTopUpError(""); }} className="slide-btn" style={{ flex: 1 }}>Retry</button>
+                  <button onClick={() => setIsTopUpOpen(false)} className="slide-btn" style={{ flex: 1, backgroundColor: "transparent", color: "#726a63", border: "1px solid rgba(114,106,99,0.3)", boxShadow: "none" }}>Close</button>
                 </div>
               </div>
             )}
 
             {topUpStatus === "TIMEOUT" && (
-              <div className="text-center py-6 space-y-6">
-                <div className="h-16 w-16 rounded-full bg-[#F0B429]/10 border border-[#F0B429]/30 text-[#C48000] flex items-center justify-center mx-auto text-2xl font-bold">
-                  !
-                </div>
-                <h4 className="text-sm font-bold text-ink">Verification Timeout</h4>
-                <p className="text-xs text-secondary px-4 leading-relaxed font-medium">
-                  We did not receive a payment confirmation in time. Check your wallet balance in a few minutes.
+              <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "20px", alignItems: "center" }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "rgba(196,128,0,0.1)", border: "1px solid rgba(196,128,0,0.3)", color: "#C48000", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "700" }}>!</div>
+                <h4 style={{ fontSize: "14px", fontWeight: "700" }}>Verification Timeout</h4>
+                <p style={{ fontSize: "12px", color: "rgba(114,106,99,0.85)", lineHeight: "1.6" }}>
+                  We did not receive a confirmation in time. Check your wallet balance in a few minutes.
                 </p>
-                <div className="flex gap-3 px-4">
-                  <button
-                    onClick={() => {
-                      setTopUpStatus("IDLE");
-                    }}
-                    className="flex-1 rounded-[10px] bg-primary py-2.5 text-xs font-bold text-white hover:bg-accent hover:text-ink transition"
-                  >
-                    Try Again
-                  </button>
-                  <button
-                    onClick={() => setIsTopUpOpen(false)}
-                    className="flex-1 rounded-[10px] border border-secondary/30 py-2.5 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
-                  >
-                    Close
-                  </button>
+                <div style={{ display: "flex", gap: "10px", width: "100%" }}>
+                  <button onClick={() => setTopUpStatus("IDLE")} className="slide-btn" style={{ flex: 1 }}>Try Again</button>
+                  <button onClick={() => setIsTopUpOpen(false)} className="slide-btn" style={{ flex: 1, backgroundColor: "transparent", color: "#726a63", border: "1px solid rgba(114,106,99,0.3)", boxShadow: "none" }}>Close</button>
                 </div>
               </div>
             )}
+
           </div>
         </div>
       )}
 
-      {/* Loyalty History Modal */}
-      {isHistoryOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-[10px] border border-secondary/20 bg-white p-6 shadow-xl text-ink max-h-[85vh] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-secondary/15 pb-4 mb-6">
-                <h3 className="text-base font-bold text-ink tracking-wide">Loyalty Points History</h3>
-                <button
-                  onClick={() => setIsHistoryOpen(false)}
-                  className="text-secondary hover:text-ink text-lg font-bold"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {loyaltyHistory.length === 0 ? (
-                <div className="text-center py-12 text-secondary text-xs font-medium">
-                  No loyalty transactions found.
-                </div>
-              ) : (
-                <div className="space-y-4 overflow-y-auto max-h-[50vh] pr-1">
-                  {loyaltyHistory.map((tx) => (
-                    <div key={tx.id} className="flex justify-between items-center border-b border-secondary/10 pb-3 text-xs">
-                      <div>
-                        <div className="font-bold text-ink">
-                          {tx.transactionType === 'EARN' ? 'Points Earned' :
-                           tx.transactionType === 'REDEEM' ? 'Points Redeemed' :
-                           tx.transactionType === 'REFUND_DEDUCT' ? 'Points Deducted (Refund)' :
-                           tx.transactionType === 'REFUND_RETURN' ? 'Points Restored (Failed Payment)' : tx.transactionType}
-                        </div>
-                        <div className="text-[10px] text-secondary">
-                          {new Date(tx.createdAt).toLocaleDateString()} at {new Date(tx.createdAt).toLocaleTimeString()}
-                        </div>
-                        {tx.referenceId && (
-                          <div className="text-[9px] text-secondary font-mono mt-1">
-                            Ref ID: {tx.referenceId.slice(0, 8)}...
-                          </div>
-                        )}
-                      </div>
-                      <span className={`font-black text-sm ${tx.amount > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {tx.amount > 0 ? `+${tx.amount}` : tx.amount} pts
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-secondary/15">
-              <button
-                onClick={() => setIsHistoryOpen(false)}
-                className="w-full rounded-[10px] bg-primary py-3 text-xs font-bold text-white hover:bg-accent hover:text-ink transition active:scale-95"
-              >
-                Close
-              </button>
-            </div>
+      {/* COOKIE CONSENT BANNER */}
+      {!cookieDismissed && (
+        <div className="cookie-banner">
+          <p className="cookie-text">
+            This website uses cookies to supplement a balanced diet and provide a much-deserved reward to the senses after consuming campus meals. Accepting our cookies is optional but highly recommended. See our <a href="#" style={{ textDecoration: "underline" }}>cookie policy</a>.
+          </p>
+          <div className="cookie-actions">
+            <span className="cookie-btn-link" onClick={() => alert("Preferences Panel loaded.")}>Preferences</span>
+            <button className="cookie-btn-primary" onClick={acceptCookies}>Accept All</button>
           </div>
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-secondary/15 py-6 text-center text-[10px] text-secondary font-semibold bg-white px-6">
-        <p>© {new Date().getFullYear()} CaféQ. Strathmore University Cafeteria. Kenya Data Protection Act 2019 Compliant.</p>
+      {/* WHATSAPP FLOATER */}
+      <div 
+        className="whatsapp-float" 
+        onClick={() => window.open("https://wa.me/254712345678", "_blank")} 
+        aria-label="Contact us on WhatsApp"
+      >
+        <svg viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.453L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.586 2.016 14.12 1.01 11.999 1.01 6.562 1.01 2.135 5.378 2.131 10.809c-.001 1.706.453 3.376 1.314 4.851l-.995 3.636 3.72-.942z"/></svg>
+      </div>
+
+      {/* FOOTER */}
+      <footer className="footer" style={{ marginTop: "auto" }}>
+        <div className="footer-grid">
+          <div className="footer-brand">
+            <h2 className="footer-title">Pre-order. Pay. Pick Up.</h2>
+            <div className="social-links">
+              <a href="#" className="social-icon" aria-label="Instagram">
+                <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+              </a>
+              <a href="#" className="social-icon" aria-label="WhatsApp">
+                <svg viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.453L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.586 2.016 14.12 1.01 11.999 1.01 6.562 1.01 2.135 5.378 2.131 10.809c-.001 1.706.453 3.376 1.314 4.851l-.995 3.636 3.72-.942z"/></svg>
+              </a>
+            </div>
+          </div>
+          
+          <div className="footer-column">
+            <h3 className="footer-heading">Services</h3>
+            <ul className="footer-links">
+              <li><Link href={user ? getDashboardLink() : "/login"}>Daily Menu</Link></li>
+              <li><Link href="/register">Student Signup</Link></li>
+            </ul>
+          </div>
+          
+          <div className="footer-column">
+            <h3 className="footer-heading">Support</h3>
+            <ul className="footer-links">
+              <li><a href="#">Strathmore ICT</a></li>
+              <li><a href="#">Contact Dining</a></li>
+            </ul>
+          </div>
+          
+          <div className="footer-column">
+            <h3 className="footer-heading">Compliance</h3>
+            <ul className="footer-links">
+              <li><a href="#">Kenya Data Protection Act</a></li>
+              <li><a href="#">Terms of Use</a></li>
+            </ul>
+          </div>
+        </div>
+        
+        <div className="footer-bottom">
+          <div>&copy; {new Date().getFullYear()} CaféQ Strathmore Dining. All rights reserved.</div>
+          <div className="footer-legal">
+            <a href="#">Terms & Conditions</a>
+            <a href="#">Privacy Policy</a>
+            <a href="#">Cookie Policy</a>
+          </div>
+        </div>
       </footer>
+
+      {/* CSS KEYFRAMES FOR ROTATION AND ANIMATION */}
+      <style jsx global>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: .5; }
+        }
+      `}</style>
+
     </div>
   );
 }

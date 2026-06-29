@@ -2,6 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { 
+  UtensilsCrossed, 
+  AlertTriangle, 
+  Info, 
+  Banknote, 
+  Smartphone 
+} from "lucide-react";
 
 interface Dish {
   id: string;
@@ -99,9 +107,8 @@ export default function CashierWorkspace() {
       router.push("/menu");
       return;
     }
-    Promise.resolve().then(() => {
-      setUser(parsedUser);
-    }).catch(() => {});
+    
+    setUser(parsedUser);
     
     const fetchMenu = async () => {
       try {
@@ -342,77 +349,91 @@ export default function CashierWorkspace() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-ink font-sans">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4"></div>
-          <p className="text-secondary text-xs font-bold">Loading cashier workspace...</p>
+      <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ border: "4px solid #b7786b", borderTopColor: "transparent", borderRadius: "50%", width: "40px", height: "40px", animation: "spin 1s linear infinite", margin: "0 auto 15px" }}></div>
+          <p style={{ fontFamily: "Libre Franklin", fontSize: "13px", fontWeight: 700, color: "#726a63" }}>Assembling cashier terminal...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-ink font-sans flex flex-col justify-between select-none">
-      {/* Header */}
-      <header className="bg-primary px-6 py-4 sticky top-0 z-40 text-white shadow-sm flex items-center justify-between">
-        <div className="max-w-[1600px] w-full mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-extrabold tracking-tight hover:opacity-90 transition">
-            CaféQ <span className="text-sm font-normal text-white/80 ml-3">Cashier Terminal</span>
-          </h1>
-          {user && (
-            <span className="text-xs font-bold uppercase tracking-wider bg-white/10 px-3 py-1 rounded">
-              Active Terminal
+    <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      
+      {/* ANNOUNCEMENT BAR (MARQUEE) */}
+      <div className="announcement-bar">
+        <div className="announcement-bar__content">
+          <span className="announcement-bar__item">Strathmore University Dining</span>
+          <span className="announcement-bar__item">Cashier Counter Terminal</span>
+          <span className="announcement-bar__item">CASH and M-Pesa Split Payments Enabled</span>
+          <span className="announcement-bar__item">Instant pickup reference creation</span>
+          {/* Repeated for marquee loop */}
+          <span className="announcement-bar__item">Strathmore University Dining</span>
+          <span className="announcement-bar__item">Cashier Counter Terminal</span>
+          <span className="announcement-bar__item">CASH and M-Pesa Split Payments Enabled</span>
+          <span className="announcement-bar__item">Instant pickup reference creation</span>
+        </div>
+      </div>
+
+      {/* HEADER */}
+      <header className="header-wrapper">
+        <div className="header-top" style={{ padding: "15px 40px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span className="logo">CAFÉQ</span>
+            <span style={{ height: "16px", width: "1px", backgroundColor: "rgba(114, 106, 99, 0.2)", margin: "0 10px" }}></span>
+            <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(114, 106, 99, 0.6)" }}>
+              Cashier Terminal
             </span>
-          )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "25px" }}>
+            {user && (
+              <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "rgba(114,106,99,0.7)" }}>
+                Logged in as: <span style={{ color: "#b7786b" }}>{user.fullName}</span> ({user.role})
+              </span>
+            )}
+            <button onClick={handleLogout} className="nav-link" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Sub Bar */}
-      <section className="bg-white border-b border-secondary/20 px-6 py-3">
-        <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-4">
-          {user && (
-            <p className="text-xs text-secondary font-semibold">
-              Logged in as: <span className="text-primary font-bold">{user.fullName}</span> ({user.role})
-            </p>
-          )}
-          <button
-            onClick={handleLogout}
-            className="rounded border border-secondary/30 px-3 py-1 text-xs font-bold text-secondary hover:bg-secondary/5 transition"
-          >
-            Sign Out
-          </button>
-        </div>
-      </section>
-
-      {/* Main Two-Panel Layout */}
-      <main className="max-w-[1600px] w-full mx-auto px-6 py-8 flex-grow">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      <main className="main-content" style={{ flexGrow: 1, padding: "40px", maxWidth: "1600px", margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.8fr 1fr", gap: "30px", alignItems: "start" }}>
           
           {/* LEFT PANEL — Menu Catalog */}
-          <div className="lg:col-span-2 space-y-6">
+          <div style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
             
             {/* Search and Filters */}
-            <div className="flex flex-col gap-4">
+            <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
               <input
                 type="text"
                 placeholder="Search dishes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-[10px] border border-secondary/30 bg-white px-4 py-2.5 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none transition"
+                style={{ width: "100%", padding: "12px 20px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "13px", outline: "none", backgroundColor: "#ffffff", color: "#726a63" }}
               />
 
-              <div className="flex flex-wrap gap-2">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                 {DIETARY_FILTERS.map((tag) => {
                   const active = tag === "All" ? selectedTags.length === 0 : selectedTags.includes(tag);
                   return (
                     <button
                       key={tag}
                       onClick={() => toggleTag(tag)}
-                      className={`rounded-full px-4 py-2 text-xs font-bold tracking-wide transition border ${
-                        active
-                          ? "bg-primary border-primary text-white"
-                          : "bg-white border-secondary/35 text-secondary hover:bg-secondary/5"
-                      }`}
+                      style={{
+                        padding: "8px 18px",
+                        fontSize: "11px",
+                        fontWeight: "700",
+                        borderRadius: "20px",
+                        border: "1px solid rgba(114, 106, 99, 0.25)",
+                        backgroundColor: active ? "#b7786b" : "#ffffff",
+                        color: active ? "#ffffff" : "#726a63",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
                     >
                       {tag}
                     </button>
@@ -423,12 +444,12 @@ export default function CashierWorkspace() {
 
             {/* Dish List Grid */}
             {!menu ? (
-              <div className="text-center py-20 rounded-[10px] border border-dashed border-secondary/20 bg-white">
-                <h2 className="text-lg font-semibold text-secondary">No active menu</h2>
-                <p className="text-sm text-secondary/70 mt-2">Check back during serving hours.</p>
+              <div style={{ textAlign: "center", padding: "60px 20px", backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px" }}>
+                <h2 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63" }}>No active menu published</h2>
+                <p style={{ fontSize: "12px", color: "rgba(114, 106, 99, 0.6)", marginTop: "5px" }}>Check back during lunch session.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px" }}>
                 {filteredDishes.map((dish) => {
                   const isSoldOut = dish.isSoldOut || dish.liveQuantity <= 0;
                   const isLowStock = dish.liveQuantity > 0 && dish.liveQuantity <= 20;
@@ -438,86 +459,53 @@ export default function CashierWorkspace() {
                     <div
                       key={dish.id}
                       onClick={() => !isSoldOut && addToCart(dish)}
-                      className={`relative flex flex-col justify-between rounded-[10px] border p-6 bg-white transition duration-150 cursor-pointer ${
-                        isSoldOut
-                          ? "border-secondary/20 opacity-60 bg-secondary/5 cursor-not-allowed"
-                          : inCart
-                          ? "border-primary bg-primary/5 hover:bg-primary/10"
-                          : "border-secondary/20 hover:border-accent hover:shadow-[0_2px_8px_rgba(0,0,0,0.01)]"
-                      }`}
+                      style={{
+                        position: "relative",
+                        display: "flex",
+                        flexDirection: "column",
+                        borderRadius: "15px",
+                        border: inCart ? "2px solid #b7786b" : "1px solid rgba(114, 106, 99, 0.12)",
+                        backgroundColor: inCart ? "rgba(183, 120, 107, 0.05)" : "#ffffff",
+                        padding: "15px",
+                        cursor: isSoldOut ? "not-allowed" : "pointer",
+                        opacity: isSoldOut ? 0.65 : 1,
+                        transition: "all 0.15s ease",
+                        userSelect: "none"
+                      }}
                     >
-                      <div>
-                        <div className="flex gap-4 items-start mb-4">
-                          <div className="w-16 h-16 rounded-[8px] overflow-hidden shrink-0 border border-secondary/15 bg-gradient-to-br from-primary/10 to-accent/20 flex items-center justify-center">
-                            {dish.imageUrl ? (
-                              <img src={dish.imageUrl} alt={dish.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-xl">🍲</span>
-                            )}
-                          </div>
-                          
-                          <div className="flex-grow min-w-0">
-                            {/* Name & Price */}
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <h4 className={`font-bold tracking-wide text-sm ${isSoldOut ? "text-secondary" : "text-ink"}`}>
-                                  {dish.name}
-                                </h4>
-                                {inCart && (
-                                  <span className="text-[10px] bg-primary text-white px-1.5 py-0.5 rounded font-bold">
-                                    ×{inCart.quantity}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="font-bold text-ink text-sm shrink-0">
-                                KES {Number(dish.price).toLocaleString()}
+                      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                        <div style={{ width: "42px", height: "42px", borderRadius: "8px", overflow: "hidden", flexShrink: 0, border: "1px solid rgba(114, 106, 99, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(114,106,99,0.02)" }}>
+                          {dish.imageUrl ? (
+                            <img src={dish.imageUrl} alt={dish.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <UtensilsCrossed size={16} style={{ color: "rgba(114, 106, 99, 0.4)" }} />
+                          )}
+                        </div>
+                        
+                        <div style={{ flexGrow: 1, minWidth: 0 }}>
+                          <h4 style={{ fontSize: "12px", fontWeight: "700", color: "#726a63", lineHeight: "1.2", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {dish.name}
+                          </h4>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "3px" }}>
+                            <span style={{ fontSize: "11px", fontWeight: "700", color: "#b7786b" }}>KES {Number(dish.price).toFixed(2)}</span>
+                            {inCart && (
+                              <span style={{ fontSize: "10px", backgroundColor: "#b7786b", color: "#ffffff", padding: "1px 6px", borderRadius: "6px", fontWeight: "700" }}>
+                                Qty: {inCart.quantity}
                               </span>
-                            </div>
-
-                            {/* Description */}
-                            {dish.description && (
-                              <p className="text-xs text-secondary leading-relaxed mt-1 line-clamp-2">
-                                {dish.description}
-                              </p>
                             )}
                           </div>
                         </div>
-
-                        {/* Tag Badges */}
-                        {dish.dietaryTags && dish.dietaryTags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-4">
-                            {dish.dietaryTags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="rounded bg-accent/15 border border-accent/30 px-2 py-0.5 text-[9px] text-ink font-bold uppercase tracking-wider"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
                       </div>
 
-                      {/* Footer / Portions remaining */}
-                      <div className="mt-4 border-t border-secondary/10 pt-4 flex items-center justify-between text-xs text-secondary font-medium">
-                        <span>Portions remaining:</span>
+                      <div style={{ borderTop: "1px solid rgba(114, 106, 99, 0.08)", marginTop: "10px", paddingTop: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px" }}>
                         {isSoldOut ? (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-status-sold-out/10 border border-status-sold-out/40 text-status-sold-out">
-                            SOLD OUT
-                          </span>
+                          <span style={{ fontSize: "8px", fontWeight: "700", backgroundColor: "#DC2626", color: "#ffffff", padding: "2px 6px", borderRadius: "4px" }}>SOLD OUT</span>
                         ) : isLowStock ? (
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="font-semibold text-ink">
-                              {dish.liveQuantity} portions
-                            </span>
-                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-status-low-stock/15 border border-status-low-stock/40 text-status-low-stock animate-pulse">
-                              LOW STOCK
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="font-semibold text-ink">
-                            {dish.liveQuantity} portions
+                          <span style={{ color: "#C48000", fontWeight: "700", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                            <AlertTriangle size={12} /> {dish.liveQuantity} left
                           </span>
+                        ) : (
+                          <span style={{ color: "rgba(114, 106, 99, 0.6)", fontWeight: "600" }}>{dish.liveQuantity} available</span>
                         )}
                       </div>
                     </div>
@@ -528,166 +516,172 @@ export default function CashierWorkspace() {
           </div>
 
           {/* RIGHT PANEL — Order Builder */}
-          <aside className="bg-white border border-secondary/20 rounded-[10px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+          <aside style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px", boxShadow: "0 10px 45px rgba(0,0,0,0.03)", color: "#726a63", fontFamily: "Libre Franklin", position: "sticky", top: "130px", maxHeight: "calc(100vh - 180px)", overflowY: "auto" }}>
             {orderResult ? (
-              <div className="flex-1 flex flex-col items-center justify-center">
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                 
                 {/* SUCCESS STATE */}
                 {(orderResult.paymentStatus === "SUCCESS" || mpesaPollStatus === "SUCCESS") ? (
-                  <div className="w-full text-center">
-                    <div className="h-12 w-12 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-600 flex items-center justify-center mx-auto mb-4 text-xl font-bold">
+                  <div style={{ width: "100%", textAlign: "center" }}>
+                    <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: "20px", fontWeight: "700" }}>
                       ✓
                     </div>
-                    <h3 className="text-xl font-bold text-ink mb-2">Order Confirmed</h3>
-                    <p className="text-xs text-secondary mb-6 leading-relaxed">
-                      {paymentMethod === "CASH" ? "Cash payment received." : "M-Pesa payment confirmed."}
+                    <h3 style={{ fontFamily: "DM Serif Display", fontSize: "20px", color: "#726a63", fontWeight: 400, marginBottom: "8px" }}>Order Confirmed</h3>
+                    <p style={{ fontSize: "12px", color: "rgba(114, 106, 99, 0.8)", marginBottom: "25px" }}>
+                      {paymentMethod === "CASH" ? "Cash payment received successfully." : "M-Pesa split payment verified."}
                     </p>
 
                     {/* Reference Code */}
-                    <div className="p-5 rounded-[10px] border border-accent bg-accent/10 text-center shadow-inner mb-6">
-                      <div className="text-[10px] uppercase font-bold tracking-widest text-secondary mb-1">
+                    <div style={{ border: "1px solid #b7786b", backgroundColor: "rgba(183, 120, 107, 0.08)", padding: "20px", borderRadius: "15px", marginBottom: "25px" }}>
+                      <div style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(114, 106, 99, 0.7)" }}>
                         Pickup Reference Code
                       </div>
-                      <div className="text-4xl font-black tracking-widest text-primary font-mono select-all">
+                      <div style={{ fontSize: "36px", fontWeight: "900", fontFamily: "monospace", letterSpacing: "0.15em", color: "#b7786b", margin: "8px 0" }}>
                         {orderResult.referenceCode || mpesaReferenceCode}
                       </div>
                     </div>
 
-                    <div className="rounded-[10px] border border-secondary/25 p-4 text-left mb-6 text-xs space-y-2 text-secondary">
-                      <div className="flex justify-between">
+                    <div style={{ border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "15px", padding: "15px", textAlign: "left", fontSize: "11px", display: "flex", flexDirection: "column", gap: "8px", marginBottom: "25px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <span>Order ID:</span>
-                        <span className="font-mono text-ink font-bold">{orderResult.order.id.substring(0, 8)}...</span>
+                        <span style={{ fontFamily: "monospace", fontWeight: "700" }}>{orderResult.order.id.substring(0, 8)}...</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Total:</span>
-                        <span className="text-primary font-bold">KES {Number(orderResult.order.totalAmount).toLocaleString()}</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(114,106,99,0.08)", paddingTop: "8px", marginTop: "8px" }}>
+                        <span>Total Paid:</span>
+                        <span style={{ color: "#b7786b", fontWeight: "700" }}>KES {Number(orderResult.order.totalAmount).toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Payment:</span>
-                        <span className="text-emerald-600 font-semibold">{paymentMethod}</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(114,106,99,0.08)", paddingTop: "8px", marginTop: "8px" }}>
+                        <span>Method:</span>
+                        <span style={{ color: "#10B981", fontWeight: "700" }}>{paymentMethod}</span>
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <div style={{ display: "flex", gap: "10px" }}>
                         <button
                           onClick={() => copyReference(orderResult.referenceCode || mpesaReferenceCode)}
-                          className="flex-1 rounded-[10px] border border-secondary/30 py-2.5 text-xs font-bold text-secondary hover:bg-secondary/5 transition cursor-pointer"
+                          className="slide-btn"
+                          style={{ flex: 1, backgroundColor: "transparent", color: "#726a63", border: "1px solid rgba(114,106,99,0.3)", boxShadow: "none" }}
                         >
-                          {copied ? "Copied!" : "Copy Ref"}
+                          {copied ? "Copied!" : "Copy Code"}
                         </button>
                         <button
                           onClick={() => window.print()}
-                          className="flex-1 rounded-[10px] border border-secondary/30 py-2.5 text-xs font-bold text-secondary hover:bg-secondary/5 transition cursor-pointer"
+                          className="slide-btn"
+                          style={{ flex: 1, backgroundColor: "transparent", color: "#726a63", border: "1px solid rgba(114,106,99,0.3)", boxShadow: "none" }}
                         >
-                          Print
+                          Print Ticket
                         </button>
                       </div>
                       <button
                         onClick={handleNewOrder}
-                        className="w-full rounded-[10px] bg-primary py-2.5 text-xs font-bold text-white hover:bg-accent hover:text-ink transition cursor-pointer"
+                        className="slide-btn"
+                        style={{ width: "100%" }}
                       >
                         New Order
                       </button>
                     </div>
                   </div>
                 ) : mpesaPollStatus === "POLLING" ? (
-                  <div className="text-center py-8">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4"></div>
-                    <h3 className="text-lg font-bold text-ink mb-2">Awaiting M-Pesa Payment</h3>
-                    <p className="text-xs text-secondary leading-relaxed">
-                      STK Push sent to student&apos;s phone. Waiting for confirmation...
+                  <div style={{ textAlign: "center", padding: "20px 0" }}>
+                    <div style={{ border: "4px solid #b7786b", borderTopColor: "transparent", borderRadius: "50%", width: "36px", height: "36px", animation: "spin 1s linear infinite", margin: "0 auto 15px" }}></div>
+                    <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63" }}>Awaiting M-Pesa Payment</h3>
+                    <p style={{ fontSize: "12px", color: "rgba(114, 106, 99, 0.7)", marginTop: "10px" }}>
+                      STK Push triggered on student phone. Polling for Safaricom confirmation callback...
                     </p>
                   </div>
-                ) : mpesaPollStatus === "FAILED" || mpesaPollStatus === "TIMEOUT" ? (
-                  <div className="text-center py-8">
-                    <div className="h-12 w-12 rounded-full bg-red-100 border border-red-300 text-status-sold-out flex items-center justify-center mx-auto mb-4 text-xl font-bold">
-                      ✕
-                    </div>
-                    <h3 className="text-lg font-bold text-ink mb-2">
-                      {mpesaPollStatus === "TIMEOUT" ? "Payment Timed Out" : "Payment Failed"}
+                ) : (mpesaPollStatus === "FAILED" || mpesaPollStatus === "TIMEOUT") ? (
+                  <div style={{ textAlign: "center", padding: "20px 0" }}>
+                    <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 15px", fontSize: "20px", fontWeight: "700" }}>✕</div>
+                    <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63" }}>
+                      {mpesaPollStatus === "TIMEOUT" ? "Split Payment Timeout" : "Split Payment Failed"}
                     </h3>
-                    <p className="text-xs text-secondary mb-6 leading-relaxed">The M-Pesa transaction was not completed.</p>
+                    <p style={{ fontSize: "12px", color: "rgba(114, 106, 99, 0.7)", margin: "10px 0 25px" }}>Safaricom transaction failed or rejected.</p>
                     <button
                       onClick={handleNewOrder}
-                      className="rounded-[10px] bg-primary px-6 py-2.5 text-xs font-bold text-white hover:bg-accent hover:text-ink transition cursor-pointer"
+                      className="slide-btn"
+                      style={{ width: "100%" }}
                     >
-                      Start New Order
+                      New Order
                     </button>
                   </div>
                 ) : null}
               </div>
             ) : (
-              <>
-                <h3 className="text-base font-bold text-ink mb-4 pb-3 border-b border-secondary/15 tracking-wide">
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                <h3 style={{ fontSize: "13px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114, 106, 99, 0.8)", paddingBottom: "8px", borderBottom: "1px solid rgba(114, 106, 99, 0.15)" }}>
                   Order Builder
                 </h3>
 
                 {/* Student Lookup */}
-                <div className="mb-5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
-                    Student Number (optional)
+                <div>
+                  <label htmlFor="studentNumberInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>
+                    Student ID Number (optional)
                   </label>
-                  <div className="flex gap-2">
+                  <div style={{ display: "flex", gap: "10px" }}>
                     <input
+                      id="studentNumberInput"
                       type="text"
                       placeholder="e.g. STR001"
                       value={studentNumberInput}
                       onChange={(e) => setStudentNumberInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && void handleStudentLookup()}
-                      className="flex-1 rounded-[10px] border border-secondary/30 bg-transparent px-3 py-2 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none transition"
+                      style={{ flex: 1, padding: "8px 15px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
                     />
                     <button
                       onClick={() => void handleStudentLookup()}
                       disabled={studentLoading}
-                      className="rounded-[10px] bg-white border border-secondary/30 px-4 py-2 text-xs font-bold text-secondary hover:bg-secondary/5 transition disabled:opacity-50 cursor-pointer"
+                      className="slide-btn"
+                      style={{ height: "auto", padding: "8px 18px", fontSize: "11px", backgroundColor: "transparent", color: "#726a63", border: "1px solid rgba(114,106,99,0.3)", boxShadow: "none" }}
                     >
                       {studentLoading ? "..." : "Verify"}
                     </button>
                   </div>
                   {studentLookup && (
-                    <div className={`mt-2 rounded-[10px] p-2.5 text-xs font-semibold ${
-                      studentLookup.found
-                        ? "bg-emerald-50 border border-emerald-300 text-emerald-700"
-                        : "bg-red-50 border border-status-sold-out/30 text-status-sold-out"
-                    }`}>
+                    <div style={{
+                      marginTop: "10px",
+                      borderRadius: "10px",
+                      padding: "10px 15px",
+                      fontSize: "11px",
+                      fontWeight: "700",
+                      backgroundColor: studentLookup.found ? "rgba(16, 185, 129, 0.05)" : "rgba(220, 38, 38, 0.05)",
+                      border: studentLookup.found ? "1px solid rgba(16, 185, 129, 0.2)" : "1px solid rgba(220, 38, 38, 0.2)",
+                      color: studentLookup.found ? "#10B981" : "#DC2626"
+                    }}>
                       {studentLookup.found
                         ? `✓ ${studentLookup.fullName} (${studentLookup.studentNumber})`
-                        : "✕ Student not found. Proceeding as walk-in."}
+                        : "✕ Student not found in system. Walk-in cashier order."}
                     </div>
                   )}
                 </div>
 
                 {/* Cart Items */}
-                <div className="flex-1 overflow-y-auto mb-4 min-h-[150px]">
+                <div style={{ flexGrow: 1, overflowY: "auto", minHeight: "150px" }}>
                   {cart.length === 0 ? (
-                    <div className="text-center py-10">
-                      <p className="text-secondary text-xs font-medium">Select dishes from the left panel to begin.</p>
+                    <div style={{ textAlign: "center", padding: "45px 10px", color: "rgba(114, 106, 99, 0.6)", fontSize: "12px" }}>
+                      Cart is empty. Select dishes to build cashier order.
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
                       {cart.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between border-b border-secondary/10 pb-3">
+                        <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(114, 106, 99, 0.1)", paddingBottom: "10px" }}>
                           <div>
-                            <h4 className="font-bold text-ink text-xs mb-1">{item.name}</h4>
-                            <p className="text-[10px] text-secondary font-medium">
-                              KES {item.price.toLocaleString()} × {item.quantity} = KES {(item.price * item.quantity).toLocaleString()}
+                            <h4 style={{ fontSize: "12px", fontWeight: "700" }}>{item.name}</h4>
+                            <p style={{ fontSize: "11px", color: "rgba(114, 106, 99, 0.6)" }}>
+                              KES {item.price.toFixed(2)} × {item.quantity} = KES {(item.price * item.quantity).toFixed(2)}
                             </p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <button
+                          
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <button 
                               onClick={() => updateCartQuantity(item.id, -1)}
-                              className="h-6 w-6 rounded border border-secondary/35 flex items-center justify-center text-xs font-bold text-secondary hover:bg-secondary/5 transition cursor-pointer font-bold"
-                            >
-                              −
-                            </button>
-                            <span className="text-xs font-bold text-ink min-w-4 text-center">{item.quantity}</span>
-                            <button
+                              style={{ width: "24px", height: "24px", borderRadius: "50%", border: "1px solid rgba(114,106,99,0.3)", backgroundColor: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            >−</button>
+                            <span style={{ fontSize: "12px", fontWeight: "700", minWidth: "15px", textAlign: "center" }}>{item.quantity}</span>
+                            <button 
                               onClick={() => updateCartQuantity(item.id, 1)}
-                              className="h-6 w-6 rounded border border-secondary/35 flex items-center justify-center text-xs font-bold text-secondary hover:bg-secondary/5 transition cursor-pointer font-bold"
-                            >
-                              +
-                            </button>
+                              style={{ width: "24px", height: "24px", borderRadius: "50%", border: "1px solid rgba(114,106,99,0.3)", backgroundColor: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            >+</button>
                           </div>
                         </div>
                       ))}
@@ -697,50 +691,72 @@ export default function CashierWorkspace() {
 
                 {/* Payment Method Toggle */}
                 {cart.length > 0 && (
-                  <div className="border-t border-secondary/15 pt-4 space-y-4">
+                  <div style={{ borderTop: "1px solid rgba(114, 106, 99, 0.15)", paddingTop: "15px", display: "flex", flexDirection: "column", gap: "15px" }}>
                     <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
+                      <label style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>
                         Payment Method
                       </label>
-                      <div className="flex gap-2">
+                      <div style={{ display: "flex", gap: "10px" }}>
                         <button
                           onClick={() => setPaymentMethod("CASH")}
-                          className={`flex-1 rounded-[10px] py-2.5 text-xs font-bold transition border cursor-pointer ${
-                            paymentMethod === "CASH"
-                              ? "bg-emerald-50 border-emerald-500/40 text-emerald-700"
-                              : "bg-white border-secondary/35 text-secondary hover:bg-secondary/5"
-                          }`}
+                          style={{
+                            flex: 1,
+                            padding: "10px 0",
+                            fontSize: "12px",
+                            fontWeight: "700",
+                            borderRadius: "30px",
+                            border: paymentMethod === "CASH" ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid rgba(114, 106, 99, 0.3)",
+                            backgroundColor: paymentMethod === "CASH" ? "rgba(16, 185, 129, 0.05)" : "#ffffff",
+                            color: paymentMethod === "CASH" ? "#10B981" : "#726a63",
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "6px"
+                          }}
                         >
-                          💵 Cash
+                          <Banknote size={14} /> Cash Payment
                         </button>
                         <button
                           onClick={() => setPaymentMethod("MPESA")}
-                          className={`flex-1 rounded-[10px] py-2.5 text-xs font-bold transition border cursor-pointer ${
-                            paymentMethod === "MPESA"
-                              ? "bg-amber-50 border-status-low-stock/40 text-status-low-stock"
-                              : "bg-white border-secondary/35 text-secondary hover:bg-secondary/5"
-                          }`}
+                          style={{
+                            flex: 1,
+                            padding: "10px 0",
+                            fontSize: "12px",
+                            fontWeight: "700",
+                            borderRadius: "30px",
+                            border: paymentMethod === "MPESA" ? "1px solid rgba(183, 120, 107, 0.5)" : "1px solid rgba(114, 106, 99, 0.3)",
+                            backgroundColor: paymentMethod === "MPESA" ? "rgba(183, 120, 107, 0.05)" : "#ffffff",
+                            color: paymentMethod === "MPESA" ? "#b7786b" : "#726a63",
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "6px"
+                          }}
                         >
-                          📱 M-Pesa
+                          <Smartphone size={14} /> M-Pesa STK Split
                         </button>
                       </div>
                       {paymentMethod === "MPESA" && (!studentLookup || !studentLookup.found) && (
-                        <p className="text-[10px] text-status-low-stock font-bold mt-1.5 animate-pulse">
-                          ⚠ M-Pesa requires a verified student number
+                        <p style={{ fontSize: "10px", color: "#b7786b", fontWeight: "700", marginTop: "6px", animation: "pulse 1.5s infinite", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                          <Info size={12} /> Verification of Student ID required for split M-Pesa topup trigger
                         </p>
                       )}
                     </div>
 
                     {/* Total */}
-                    <div className="flex items-center justify-between border-t border-secondary/10 pt-3">
-                      <span className="text-xs font-bold text-secondary">Grand Total Amount:</span>
-                      <span className="text-lg font-black text-primary font-mono">
-                        KES {cartTotal.toLocaleString()}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(114, 106, 99, 0.1)", paddingTop: "12px" }}>
+                      <span style={{ fontSize: "12px", fontWeight: "700", color: "rgba(114,106,99,0.7)" }}>Grand Total Due:</span>
+                      <span style={{ fontSize: "18px", fontWeight: "900", fontFamily: "monospace", color: "#b7786b" }}>
+                        KES {cartTotal.toFixed(2)}
                       </span>
                     </div>
 
                     {orderError && (
-                      <div className="rounded-[10px] bg-status-sold-out/10 border border-status-sold-out/30 p-2.5 text-xs font-bold text-status-sold-out">
+                      <div style={{ borderRadius: "10px", backgroundColor: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.2)", padding: "10px", fontSize: "11px", fontWeight: "700", color: "#DC2626" }}>
                         {orderError}
                       </div>
                     )}
@@ -749,21 +765,25 @@ export default function CashierWorkspace() {
                     <button
                       onClick={() => void handlePlaceOrder()}
                       disabled={orderLoading || (paymentMethod === "MPESA" && (!studentLookup || !studentLookup.found))}
-                      className="w-full rounded-[10px] bg-primary py-3 text-sm font-bold text-white shadow-sm hover:bg-accent hover:text-ink transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none cursor-pointer"
+                      className="slide-btn"
+                      style={{ width: "100%", opacity: (orderLoading || (paymentMethod === "MPESA" && (!studentLookup || !studentLookup.found))) ? 0.5 : 1 }}
                     >
-                      {orderLoading ? "Processing..." : `Place Order & Pay (${paymentMethod})`}
+                      {orderLoading ? "Processing..." : `Checkout Order (${paymentMethod})`}
                     </button>
                   </div>
                 )}
-              </>
+              </div>
             )}
           </aside>
+          
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-secondary/15 py-6 text-center text-[10px] text-secondary font-semibold bg-white px-6">
-        <p>© {new Date().getFullYear()} CaféQ. Strathmore University Cafeteria. Kenya Data Protection Act 2019 Compliant.</p>
+      {/* FOOTER */}
+      <footer className="footer">
+        <p style={{ fontSize: "10px", color: "rgba(114,106,99,0.6)", textAlign: "center" }}>
+          © {new Date().getFullYear()} CaféQ. Strathmore University Cafeteria. Kenya Data Protection Act 2019 Compliant.
+        </p>
       </footer>
     </div>
   );

@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { 
+  LayoutDashboard, 
+  UtensilsCrossed, 
+  TrendingUp, 
+  Award, 
+  UserPlus 
+} from "lucide-react";
 
 interface Dish {
   id: string;
@@ -554,189 +561,208 @@ export default function AdminDashboard() {
 
   if (!isAdmin || globalLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-ink font-sans">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4"></div>
-          <p className="text-secondary text-xs font-bold">Verifying authorization...</p>
+      <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ border: "4px solid #b7786b", borderTopColor: "transparent", borderRadius: "50%", width: "40px", height: "40px", animation: "spin 1s linear infinite", margin: "0 auto 15px" }}></div>
+          <p style={{ fontFamily: "Libre Franklin", fontSize: "13px", fontWeight: 700, color: "#726a63" }}>Verifying authorization...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-ink font-sans flex flex-col justify-between select-none">
-      {/* Top Bar */}
-      <header className="bg-primary px-6 py-4 sticky top-0 z-40 text-white shadow-sm flex items-center justify-between">
-        <div className="max-w-7xl w-full mx-auto flex items-center justify-between">
-          <Link href="/" className="text-2xl font-extrabold tracking-tight hover:opacity-90 transition">
-            CaféQ Admin Workspace
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="rounded border border-white/30 px-4 py-2 text-xs font-bold text-white hover:bg-white/10 transition cursor-pointer"
-          >
-            Sign Out
-          </button>
+    <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      
+      {/* ANNOUNCEMENT BAR (MARQUEE) */}
+      <div className="announcement-bar">
+        <div className="announcement-bar__content">
+          <span className="announcement-bar__item">Strathmore University Dining</span>
+          <span className="announcement-bar__item">CaféQ System Administrator Portal</span>
+          <span className="announcement-bar__item">Predictive Demand Forecast Optimization</span>
+          <span className="announcement-bar__item">Provision Staff Credentials & Daily Menus</span>
+          {/* Repeated for marquee loop */}
+          <span className="announcement-bar__item">Strathmore University Dining</span>
+          <span className="announcement-bar__item">CaféQ System Administrator Portal</span>
+          <span className="announcement-bar__item">Predictive Demand Forecast Optimization</span>
+          <span className="announcement-bar__item">Provision Staff Credentials & Daily Menus</span>
+        </div>
+      </div>
+
+      {/* HEADER */}
+      <header className="header-wrapper">
+        <div className="header-top" style={{ padding: "15px 40px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span className="logo">CAFÉQ</span>
+            <span style={{ height: "16px", width: "1px", backgroundColor: "rgba(114, 106, 99, 0.2)", margin: "0 10px" }}></span>
+            <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(114, 106, 99, 0.6)" }}>
+              Admin Workspace
+            </span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "25px" }}>
+            <button onClick={handleLogout} className="nav-link" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Sub Bar Tabs */}
-      <section className="bg-white border-b border-secondary/20 px-6 py-2">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex space-x-6">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`pb-1 text-sm font-bold border-b-2 transition cursor-pointer ${
-                activeTab === "overview"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-secondary hover:text-ink"
-              }`}
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab("menus")}
-              className={`pb-1 text-sm font-bold border-b-2 transition cursor-pointer ${
-                activeTab === "menus"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-secondary hover:text-ink"
-              }`}
-            >
-              Menu Management
-            </button>
-            <button
-              onClick={() => setActiveTab("reports")}
-              className={`pb-1 text-sm font-bold border-b-2 transition cursor-pointer ${
-                activeTab === "reports"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-secondary hover:text-ink"
-              }`}
-            >
-              Reports
-            </button>
-            <button
-              onClick={() => setActiveTab("loyalty")}
-              className={`pb-1 text-sm font-bold border-b-2 transition cursor-pointer ${
-                activeTab === "loyalty"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-secondary hover:text-ink"
-              }`}
-            >
-              Loyalty Program
-            </button>
-            <button
-              onClick={() => setActiveTab("staff")}
-              className={`pb-1 text-sm font-bold border-b-2 transition cursor-pointer ${
-                activeTab === "staff"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-secondary hover:text-ink"
-              }`}
-            >
-              Provision Accounts
-            </button>
+      <div style={{ display: "flex", flexGrow: 1, minHeight: "calc(100vh - 120px)" }}>
+        {/* Sticky Left Sidebar Console */}
+        <aside style={{ width: "260px", backgroundColor: "#ffffff", borderRight: "1px solid rgba(114, 106, 99, 0.12)", padding: "35px 24px", display: "flex", flexDirection: "column", gap: "25px", flexShrink: 0 }}>
+          <div style={{ marginBottom: "5px" }}>
+            <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(114, 106, 99, 0.4)" }}>Admin Navigation</span>
           </div>
-          <p className="text-xs text-secondary font-semibold hidden lg:block">
-            Campus: <span className="text-primary font-bold">Strathmore Dining Services</span>
-          </p>
-        </div>
-      </section>
 
-      {/* Main Workspace */}
-      <main className="max-w-7xl w-full mx-auto px-6 py-8 flex-grow">
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {[
+              { id: "overview", label: "Overview", icon: <LayoutDashboard size={15} strokeWidth={2.2} /> },
+              { id: "menus", label: "Menu Manager", icon: <UtensilsCrossed size={15} strokeWidth={2.2} /> },
+              { id: "reports", label: "Reports & Forecasts", icon: <TrendingUp size={15} strokeWidth={2.2} /> },
+              { id: "loyalty", label: "Loyalty Program", icon: <Award size={15} strokeWidth={2.2} /> },
+              { id: "staff", label: "Provision Staff", icon: <UserPlus size={15} strokeWidth={2.2} /> }
+            ].map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  style={{
+                    background: active ? "rgba(183, 120, 107, 0.08)" : "none",
+                    border: "none",
+                    borderLeft: active ? "3px solid #b7786b" : "3px solid transparent",
+                    padding: "12px 15px",
+                    textAlign: "left",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    color: active ? "#b7786b" : "#726a63",
+                    cursor: "pointer",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    borderRadius: "0 6px 6px 0",
+                    transition: "all 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px"
+                  }}
+                >
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: active ? "#b7786b" : "rgba(114, 106, 99, 0.6)" }}>
+                    {tab.icon}
+                  </span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ marginTop: "auto", borderTop: "1px solid rgba(114,106,99,0.08)", paddingTop: "25px" }}>
+            <span style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", color: "rgba(114,106,99,0.4)", marginBottom: "6px" }}>Strathmore Campus</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#10B981" }}></span>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "#726a63" }}>System Active</span>
+            </div>
+          </div>
+        </aside>
+
+        {/* MAIN WORKSPACE */}
+        <main className="main-content" style={{ flexGrow: 1, padding: "40px", overflowY: "auto" }}>
         
         {error && (
-          <div className="mb-6 rounded-[10px] bg-status-sold-out/10 border border-status-sold-out/30 p-3.5 text-xs text-status-sold-out font-bold">
+          <div style={{ backgroundColor: "rgba(220, 38, 38, 0.08)", border: "1px solid rgba(220, 38, 38, 0.2)", borderRadius: "10px", color: "#DC2626", padding: "12px 20px", fontSize: "12px", fontWeight: "700", marginBottom: "25px", textAlign: "center" }}>
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-6 rounded-[10px] bg-emerald-500/10 border border-emerald-500/30 p-3.5 text-xs text-emerald-600 font-bold">
+          <div style={{ backgroundColor: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "10px", color: "#10B981", padding: "12px 20px", fontSize: "12px", fontWeight: "700", marginBottom: "25px", textAlign: "center" }}>
             {success}
           </div>
         )}
 
         {/* TAB: OVERVIEW */}
         {activeTab === "overview" && (
-          <div className="space-y-8 animate-in fade-in duration-150">
+          <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+            
             {/* KPI Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Live Revenue</span>
-                <span className="text-2xl font-black text-primary mt-2">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "20px" }}>
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114, 106, 99, 0.5)" }}>Live Revenue</span>
+                <span style={{ fontSize: "24px", fontWeight: "950", color: "#b7786b", marginTop: "10px" }}>
                   KES {(revenueStats?.totalRevenue || 0).toLocaleString()}
                 </span>
-                <span className="text-[9px] text-secondary font-semibold mt-1">Confirmed & collected orders</span>
+                <span style={{ fontSize: "9px", color: "rgba(114, 106, 99, 0.6)", marginTop: "5px" }}>Confirmed & collected orders</span>
               </div>
 
-              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Total Orders Placed</span>
-                <span className="text-2xl font-black text-ink mt-2">
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114, 106, 99, 0.5)" }}>Total Orders Placed</span>
+                <span style={{ fontSize: "24px", fontWeight: "950", color: "#726a63", marginTop: "10px" }}>
                   {orderStats?.totalPlaced || 0}
                 </span>
-                <span className="text-[9px] text-secondary font-semibold mt-1">All states combined</span>
+                <span style={{ fontSize: "9px", color: "rgba(114, 106, 99, 0.6)", marginTop: "5px" }}>All states combined</span>
               </div>
 
-              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Orders Collected</span>
-                <span className="text-2xl font-black text-emerald-600 mt-2">
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114, 106, 99, 0.5)" }}>Orders Collected</span>
+                <span style={{ fontSize: "24px", fontWeight: "950", color: "#10B981", marginTop: "10px" }}>
                   {orderStats?.totalCollected || 0}
                 </span>
-                <span className="text-[9px] text-secondary font-semibold mt-1">Handed over to students</span>
+                <span style={{ fontSize: "9px", color: "rgba(114, 106, 99, 0.6)", marginTop: "5px" }}>Handed over to students</span>
               </div>
 
-              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Collection Rate</span>
-                <span className="text-2xl font-black text-primary mt-2">
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114, 106, 99, 0.5)" }}>Collection Rate</span>
+                <span style={{ fontSize: "24px", fontWeight: "950", color: "#b7786b", marginTop: "10px" }}>
                   {orderStats?.collectionRate || 0}%
                 </span>
-                <span className="text-[9px] text-secondary font-semibold mt-1">Target: &gt;95% collection</span>
+                <span style={{ fontSize: "9px", color: "rgba(114, 106, 99, 0.6)", marginTop: "5px" }}>Target: &gt;95% collection</span>
               </div>
             </div>
 
             {/* Split layout: Preparation Recommendations & Live Low Stock Alerts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "30px" }} className="grid lg:grid-cols-3">
+              
               {/* Left/Center: Demand Forecasting recommendations */}
-              <div className="lg:col-span-2 rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-                <div className="flex items-center justify-between border-b border-secondary/15 pb-3 mb-4">
-                  <h3 className="text-base font-bold text-ink tracking-wide">
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px" }} className="lg:col-span-2">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(114,106,99,0.15)", paddingBottom: "12px", marginBottom: "20px" }}>
+                  <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63" }}>
                     Preparation Recommendations (FastAPI Demand Forecast Model)
                   </h3>
-                  <span className="text-[9px] font-mono uppercase bg-accent/20 border border-accent text-primary px-2.5 py-1 rounded">
+                  <span style={{ fontSize: "8px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "rgba(183, 120, 107, 0.08)", border: "1px solid rgba(183, 120, 107, 0.2)", padding: "4px 10px", borderRadius: "5px", color: "#b7786b" }}>
                     ML-Powered
                   </span>
                 </div>
                 
                 {dishDemand.length === 0 ? (
-                  <div className="text-center py-12 text-secondary text-xs font-semibold italic">
+                  <div style={{ textAlign: "center", padding: "40px 0", fontSize: "12px", color: "rgba(114, 106, 99, 0.6)", fontStyle: "italic" }}>
                     No active daily menu found. Publish a menu to view forecasting recommendations.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs font-semibold text-secondary">
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", color: "#726a63", textAlign: "left" }}>
                       <thead>
-                        <tr className="border-b border-secondary/10 text-ink uppercase tracking-wider text-[9px]">
-                          <th className="py-3">Dish Name</th>
-                          <th className="py-3 text-center">Current Prep Qty</th>
-                          <th className="py-3 text-center text-primary">Model Forecast</th>
-                          <th className="py-3 text-right">Actions</th>
+                        <tr style={{ borderBottom: "1px solid rgba(114, 106, 99, 0.15)", textTransform: "uppercase", fontSize: "9px", fontWeight: "700", color: "rgba(114, 106, 99, 0.5)" }}>
+                          <th style={{ padding: "12px 10px" }}>Dish Name</th>
+                          <th style={{ padding: "12px 10px", textAlign: "center" }}>Current Prep Qty</th>
+                          <th style={{ padding: "12px 10px", textAlign: "center", color: "#b7786b" }}>Model Forecast</th>
+                          <th style={{ padding: "12px 10px", textAlign: "right" }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {dishDemand.map((dish) => (
-                          <tr key={dish.dishId} className="border-b border-secondary/10 last:border-0">
-                            <td className="py-4 text-ink font-bold">{dish.name}</td>
-                            <td className="py-4 text-center">{dish.preparedQty} portions</td>
-                            <td className="py-4 text-center text-primary font-black text-sm">{dish.forecastedQty} portions</td>
-                            <td className="py-4 text-right">
+                          <tr key={dish.dishId} style={{ borderBottom: "1px solid rgba(114, 106, 99, 0.08)" }}>
+                            <td style={{ padding: "16px 10px", fontWeight: "700", color: "#726a63" }}>{dish.name}</td>
+                            <td style={{ padding: "16px 10px", textAlign: "center" }}>{dish.preparedQty} portions</td>
+                            <td style={{ padding: "16px 10px", textAlign: "center", color: "#b7786b", fontWeight: "900" }}>{dish.forecastedQty} portions</td>
+                            <td style={{ padding: "16px 10px", textAlign: "right" }}>
                               {dish.preparedQty === dish.forecastedQty ? (
-                                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
+                                <span style={{ fontSize: "10px", color: "#10B981", backgroundColor: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "4px 10px", borderRadius: "30px", fontWeight: "700" }}>
                                   ✓ Aligned
                                 </span>
                               ) : (
                                 <button
                                   onClick={() => handleApplyForecast(dish.dishId, dish.forecastedQty)}
-                                  className="text-[10px] font-bold bg-primary text-white px-2.5 py-1 rounded hover:bg-accent hover:text-ink transition active:scale-95 cursor-pointer"
+                                  className="slide-btn"
+                                  style={{ padding: "6px 15px", fontSize: "10px", height: "auto" }}
                                 >
                                   Apply Forecast
                                 </button>
@@ -751,42 +777,40 @@ export default function AdminDashboard() {
               </div>
 
               {/* Right: Live Low-Stock Notifications */}
-              <div className="lg:col-span-1 rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] space-y-4">
-                <h3 className="text-base font-bold text-ink tracking-wide border-b border-secondary/15 pb-3">
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px" }} className="lg:col-span-1">
+                <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63", borderBottom: "1px solid rgba(114,106,99,0.15)", paddingBottom: "12px", marginBottom: "20px" }}>
                   Live Stock Alerts
                 </h3>
 
                 {lowStockAlerts.length === 0 ? (
-                  <div className="text-center py-12 text-secondary text-xs font-semibold italic">
+                  <div style={{ textAlign: "center", padding: "40px 0", fontSize: "12px", color: "rgba(114, 106, 99, 0.6)", fontStyle: "italic" }}>
                     ✓ All active menu portions are healthy.
                   </div>
                 ) : (
-                  <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+                  <div style={{ display: "flex", flexDirection: "column", gap: "15px", maxHeight: "400px", overflowY: "auto" }}>
                     {lowStockAlerts.map((alert) => {
                       const isSoldOut = alert.remainingQuantity === 0 || alert.isSoldOut;
                       return (
-                        <div key={alert.dishId} className={`rounded-[10px] border p-4 flex flex-col justify-between text-xs ${
-                          isSoldOut 
-                            ? 'bg-rose-50 border-rose-200 text-rose-950' 
-                            : 'bg-amber-50 border-amber-200 text-amber-950'
-                        }`}>
-                          <div className="flex justify-between items-start">
-                            <span className="font-bold text-ink text-sm">{alert.name}</span>
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${
-                              isSoldOut 
-                                ? 'bg-rose-100 text-rose-800 border border-rose-300' 
-                                : 'bg-amber-100 text-amber-800 border border-amber-300'
-                            }`}>
+                        <div key={alert.dishId} style={{
+                          borderRadius: "15px",
+                          border: isSoldOut ? "1px solid rgba(220,38,38,0.2)" : "1px solid rgba(196,128,0,0.2)",
+                          backgroundColor: isSoldOut ? "rgba(220,38,38,0.03)" : "rgba(196,128,0,0.03)",
+                          padding: "15px",
+                          fontSize: "12px"
+                        }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                            <span style={{ fontWeight: "700", color: "#726a63" }}>{alert.name}</span>
+                            <span style={{ fontSize: "8px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: isSoldOut ? "#DC2626" : "#C48000", color: "#ffffff", padding: "2px 6px", borderRadius: "5px" }}>
                               {isSoldOut ? 'Sold Out' : 'Low Stock'}
                             </span>
                           </div>
 
-                          <div className="mt-3 flex justify-between font-semibold">
+                          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", marginTop: "10px" }}>
                             <span>Prepared: {alert.preparedQuantity}</span>
-                            <span>Remaining: <strong className={isSoldOut ? 'text-rose-600' : 'text-amber-600'}>{alert.remainingQuantity}</strong></span>
+                            <span style={{ color: isSoldOut ? '#DC2626' : '#C48000' }}>Remaining: {alert.remainingQuantity}</span>
                           </div>
 
-                          <div className="mt-2 text-[9px] text-secondary font-medium border-t border-secondary/10 pt-2 flex items-center justify-between">
+                          <div style={{ marginTop: "10px", fontSize: "9px", color: "rgba(114, 106, 99, 0.5)", borderTop: "1px solid rgba(114, 106, 99, 0.08)", paddingTop: "8px", display: "flex", justifyContent: "space-between" }}>
                             <span>Triggered:</span>
                             <span>
                               {isSoldOut 
@@ -806,40 +830,37 @@ export default function AdminDashboard() {
 
         {/* TAB: REPORTS */}
         {activeTab === "reports" && (
-          <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] space-y-6 animate-in fade-in duration-150">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-secondary/15 pb-4">
+          <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(114,106,99,0.15)", paddingBottom: "15px", marginBottom: "20px", gap: "15px" }}>
               <div>
-                <h3 className="text-base font-bold text-ink tracking-wide">
+                <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63" }}>
                   Dish Demand Comparison & Analytics
                 </h3>
-                <p className="text-xs text-secondary mt-1">
+                <p style={{ fontSize: "11px", color: "rgba(114, 106, 99, 0.6)", marginTop: "4px" }}>
                   Compare forecasted, prepared, and confirmed orders to optimize waste and collection rates.
                 </p>
               </div>
-              <button
-                onClick={handleExportCsv}
-                className="bg-primary text-white text-xs font-bold px-4 py-2.5 rounded-[10px] hover:bg-accent hover:text-ink transition active:scale-95 flex items-center gap-2 cursor-pointer"
-              >
+              <button onClick={handleExportCsv} className="slide-btn" style={{ padding: "8px 18px", fontSize: "11px", height: "auto" }}>
                 📥 Export Orders & Revenue CSV
               </button>
             </div>
 
             {dishDemand.length === 0 ? (
-              <div className="text-center py-12 text-secondary text-sm font-semibold italic">
+              <div style={{ textAlign: "center", padding: "40px 0", fontSize: "12px", color: "rgba(114, 106, 99, 0.6)", fontStyle: "italic" }}>
                 No active menu found. Publish a daily menu to inspect historical and live metrics.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-semibold text-secondary">
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", color: "#726a63", textAlign: "left" }}>
                   <thead>
-                    <tr className="border-b border-secondary/10 text-ink uppercase tracking-wider text-[9px]">
-                      <th className="py-3">Dish Name</th>
-                      <th className="py-3 text-center">Forecasted Qty</th>
-                      <th className="py-3 text-center">Prepared Qty</th>
-                      <th className="py-3 text-center">Confirmed Orders</th>
-                      <th className="py-3 text-center">Remaining Portions</th>
-                      <th className="py-3 text-center">Ratio (Ordered/Prep)</th>
-                      <th className="py-3 text-right">Collection Rate</th>
+                    <tr style={{ borderBottom: "1px solid rgba(114, 106, 99, 0.15)", textTransform: "uppercase", fontSize: "9px", fontWeight: "700", color: "rgba(114, 106, 99, 0.5)" }}>
+                      <th style={{ padding: "12px 10px" }}>Dish Name</th>
+                      <th style={{ padding: "12px 10px", textAlign: "center" }}>Forecasted Qty</th>
+                      <th style={{ padding: "12px 10px", textAlign: "center" }}>Prepared Qty</th>
+                      <th style={{ padding: "12px 10px", textAlign: "center" }}>Confirmed Orders</th>
+                      <th style={{ padding: "12px 10px", textAlign: "center" }}>Remaining Portions</th>
+                      <th style={{ padding: "12px 10px", textAlign: "center" }}>Ratio (Ordered/Prep)</th>
+                      <th style={{ padding: "12px 10px", textAlign: "right" }}>Collection Rate</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -847,22 +868,26 @@ export default function AdminDashboard() {
                       const ratio = dish.preparedQty > 0 ? (dish.confirmedQty / dish.preparedQty) * 100 : 0;
                       const isHighDemand = ratio >= 80;
                       return (
-                        <tr key={dish.dishId} className={`border-b border-secondary/10 last:border-0 ${
-                          isHighDemand ? 'bg-amber-50/70 border-amber-100 text-amber-900' : ''
-                        }`}>
-                          <td className="py-4 text-ink font-bold">{dish.name}</td>
-                          <td className="py-4 text-center">{dish.forecastedQty}</td>
-                          <td className="py-4 text-center">{dish.preparedQty}</td>
-                          <td className="py-4 text-center font-bold text-ink">{dish.confirmedQty}</td>
-                          <td className="py-4 text-center">{dish.remainingQty}</td>
-                          <td className="py-4 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              isHighDemand ? 'bg-amber-100 text-amber-800' : 'bg-secondary/10 text-secondary'
-                            }`}>
+                        <tr key={dish.dishId} style={{ borderBottom: "1px solid rgba(114, 106, 99, 0.08)", backgroundColor: isHighDemand ? "rgba(183,120,107,0.02)" : "transparent" }}>
+                          <td style={{ padding: "14px 10px", fontWeight: "700", color: "#726a63" }}>{dish.name}</td>
+                          <td style={{ padding: "14px 10px", textAlign: "center" }}>{dish.forecastedQty}</td>
+                          <td style={{ padding: "14px 10px", textAlign: "center" }}>{dish.preparedQty}</td>
+                          <td style={{ padding: "14px 10px", textAlign: "center", fontWeight: "700", color: "#726a63" }}>{dish.confirmedQty}</td>
+                          <td style={{ padding: "14px 10px", textAlign: "center" }}>{dish.remainingQty}</td>
+                          <td style={{ padding: "14px 10px", textAlign: "center" }}>
+                            <span style={{
+                              fontSize: "9px",
+                              fontWeight: "750",
+                              backgroundColor: isHighDemand ? "rgba(183, 120, 107, 0.08)" : "rgba(114, 106, 99, 0.06)",
+                              border: isHighDemand ? "1px solid rgba(183, 120, 107, 0.2)" : "1px solid rgba(114, 106, 99, 0.1)",
+                              color: isHighDemand ? "#b7786b" : "#726a63",
+                              padding: "2px 8px",
+                              borderRadius: "10px"
+                            }}>
                               {ratio.toFixed(1)}%
                             </span>
                           </td>
-                          <td className="py-4 text-right text-emerald-600 font-bold">{dish.collectionRate}%</td>
+                          <td style={{ padding: "14px 10px", textAlign: "right", color: "#10B981", fontWeight: "700" }}>{dish.collectionRate}%</td>
                         </tr>
                       );
                     })}
@@ -875,67 +900,74 @@ export default function AdminDashboard() {
 
         {/* TAB: LOYALTY PROGRAM */}
         {activeTab === "loyalty" && (
-          <div className="space-y-8 animate-in fade-in duration-150">
+          <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
+            
             {/* Loyalty KPI Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Total Points Issued</span>
-                <span className="text-2xl font-black text-primary mt-2">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "20px" }}>
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114, 106, 99, 0.5)" }}>Total Points Issued</span>
+                <span style={{ fontSize: "24px", fontWeight: "950", color: "#b7786b", marginTop: "10px" }}>
                   {loyaltyStats?.totalPointsIssued || 0} pts
                 </span>
-                <span className="text-[9px] text-secondary font-semibold mt-1">Earned by Strathmore students</span>
+                <span style={{ fontSize: "9px", color: "rgba(114, 106, 99, 0.6)", marginTop: "5px" }}>Earned by Strathmore students</span>
               </div>
 
-              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Total Points Redeemed</span>
-                <span className="text-2xl font-black text-emerald-600 mt-2">
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114, 106, 99, 0.5)" }}>Total Points Redeemed</span>
+                <span style={{ fontSize: "24px", fontWeight: "950", color: "#10B981", marginTop: "10px" }}>
                   {loyaltyStats?.totalPointsRedeemed || 0} pts
                 </span>
-                <span className="text-[9px] text-secondary font-semibold mt-1">Equivalent KES discount credit</span>
+                <span style={{ fontSize: "9px", color: "rgba(114, 106, 99, 0.6)", marginTop: "5px" }}>Equivalent KES discount credit</span>
               </div>
 
-              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Active Loyalty Accounts</span>
-                <span className="text-2xl font-black text-ink mt-2">
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114, 106, 99, 0.5)" }}>Active Loyalty Accounts</span>
+                <span style={{ fontSize: "24px", fontWeight: "950", color: "#726a63", marginTop: "10px" }}>
                   {loyaltyStats?.activeAccountsCount || 0}
                 </span>
-                <span className="text-[9px] text-secondary font-semibold mt-1">Valid registered accounts</span>
+                <span style={{ fontSize: "9px", color: "rgba(114, 106, 99, 0.6)", marginTop: "5px" }}>Valid registered accounts</span>
               </div>
 
-              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Frozen Accounts</span>
-                <span className="text-2xl font-black text-rose-600 mt-2">
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114, 106, 99, 0.5)" }}>Frozen Accounts</span>
+                <span style={{ fontSize: "24px", fontWeight: "950", color: "#DC2626", marginTop: "10px" }}>
                   {loyaltyStats?.frozenAccountsCount || 0}
                 </span>
-                <span className="text-[9px] text-secondary font-semibold mt-1">Negative balance locks</span>
+                <span style={{ fontSize: "9px", color: "rgba(114, 106, 99, 0.6)", marginTop: "5px" }}>Negative balance locks</span>
               </div>
 
-              <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col justify-between">
-                <span className="text-[10px] font-bold text-secondary uppercase tracking-wider">Redemption Eligible</span>
-                <span className="text-2xl font-black text-primary mt-2">
+              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114, 106, 99, 0.5)" }}>Redemption Eligible</span>
+                <span style={{ fontSize: "24px", fontWeight: "950", color: "#b7786b", marginTop: "10px" }}>
                   {loyaltyStats?.eligibleAccountsCount || 0}
                 </span>
-                <span className="text-[9px] text-secondary font-semibold mt-1">Accounts with balance &gt;= 50 pts</span>
+                <span style={{ fontSize: "9px", color: "rgba(114, 106, 99, 0.6)", marginTop: "5px" }}>Accounts with balance &gt;= 50 pts</span>
               </div>
             </div>
 
             {/* Loyalty Rules & Summary card */}
-            <div className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] space-y-4">
-              <h3 className="text-base font-bold text-ink border-b border-secondary/15 pb-2">
+            <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63", borderBottom: "1px solid rgba(114,106,99,0.15)", paddingBottom: "12px", marginBottom: "20px" }}>
                 CaféQ Loyalty System Parameter Rules
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-secondary leading-relaxed">
-                <div className="p-4 bg-background rounded-[10px] border border-secondary/10">
-                  <strong className="text-ink block mb-1">Earning Parameters</strong>
-                  <p>Students earn 1 loyalty point for every KES 10 spent on fully collected orders. Values are rounded down to the nearest point on order finalization.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "20px" }} className="grid md:grid-cols-3">
+                <div style={{ padding: "18px", backgroundColor: "#faf9f7", borderRadius: "15px", border: "1px solid rgba(114, 106, 99, 0.1)" }}>
+                  <strong style={{ color: "#726a63", fontSize: "13px", display: "block", marginBottom: "5px" }}>Earning Parameters</strong>
+                  <p style={{ fontSize: "11px", color: "rgba(114, 106, 99, 0.8)", lineHeight: "1.5" }}>
+                    Students earn 1 loyalty point for every KES 10 spent on fully collected orders. Values are rounded down to the nearest point on order finalization.
+                  </p>
                 </div>
-                <div className="p-4 bg-background rounded-[10px] border border-secondary/10">
-                  <strong className="text-ink block mb-1">Redemption Parameters</strong>
-                  <p>1 point corresponds to a KES 1.00 checkout discount. Minimum redemption is 50 points; maximum redemption is 30% of the total order value. Accounts are limited to 3 redemptions per calendar day.</p>
+                <div style={{ padding: "18px", backgroundColor: "#faf9f7", borderRadius: "15px", border: "1px solid rgba(114, 106, 99, 0.1)" }}>
+                  <strong style={{ color: "#726a63", fontSize: "13px", display: "block", marginBottom: "5px" }}>Redemption Parameters</strong>
+                  <p style={{ fontSize: "11px", color: "rgba(114, 106, 99, 0.8)", lineHeight: "1.5" }}>
+                    1 point corresponds to a KES 1.00 checkout discount. Minimum redemption is 50 points; maximum redemption is 30% of the total order value. Accounts are limited to 3 redemptions per calendar day.
+                  </p>
                 </div>
-                <div className="p-4 bg-background rounded-[10px] border border-secondary/10">
-                  <strong className="text-ink block mb-1">Deduction & Frozen States</strong>
-                  <p>Points earned are proportionally deducted if uncollected dishes are auto-refunded at the end of the serving window. If the balance falls below zero, the account status is set to FROZEN.</p>
+                <div style={{ padding: "18px", backgroundColor: "#faf9f7", borderRadius: "15px", border: "1px solid rgba(114, 106, 99, 0.1)" }}>
+                  <strong style={{ color: "#726a63", fontSize: "13px", display: "block", marginBottom: "5px" }}>Deduction & Frozen States</strong>
+                  <p style={{ fontSize: "11px", color: "rgba(114, 106, 99, 0.8)", lineHeight: "1.5" }}>
+                    Points earned are proportionally deducted if uncollected dishes are auto-refunded at the end of the serving window. If the balance falls below zero, the account status is set to FROZEN.
+                  </p>
                 </div>
               </div>
             </div>
@@ -944,73 +976,73 @@ export default function AdminDashboard() {
 
         {/* TAB 1: MENU MANAGER */}
         {activeTab === "menus" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "30px" }} className="grid lg:grid-cols-3">
             
             {/* Left: Create Menu Form */}
-            <div className="lg:col-span-1 rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-              <h3 className="text-base font-bold text-primary mb-4 border-b border-secondary/15 pb-2">
+            <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px" }} className="lg:col-span-1">
+              <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63", borderBottom: "1px solid rgba(114,106,99,0.15)", paddingBottom: "12px", marginBottom: "20px" }}>
                 Create Daily Menu
               </h3>
-              <form onSubmit={handleCreateMenu} className="space-y-4">
+              <form onSubmit={handleCreateMenu} style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
+                  <label htmlFor="publishDateInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>
                     Publish Date
                   </label>
                   <input
+                    id="publishDateInput"
                     type="date"
                     required
                     value={newMenuDate}
                     onChange={(e) => setNewMenuDate(e.target.value)}
-                    className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-3 py-2.5 text-sm text-ink focus:border-primary focus:outline-none transition"
+                    style={{ width: "100%", padding: "10px 15px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
                   />
                 </div>
-                <button
-                  type="submit"
-                  className="w-full rounded-[10px] bg-primary py-2.5 text-xs font-bold text-white hover:bg-accent hover:text-ink transition cursor-pointer"
-                >
+                <button type="submit" className="slide-btn" style={{ width: "100%", height: "45px" }}>
                   Create Menu Draft
                 </button>
               </form>
             </div>
 
             {/* Right/Center: Menus Listing */}
-            <div className="lg:col-span-2 space-y-6">
-              <h2 className="text-lg font-bold text-ink">Configured Daily Menus</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }} className="lg:col-span-2">
+              <h2 style={{ fontSize: "16px", fontWeight: "700", color: "#726a63" }}>Configured Daily Menus</h2>
               
               {menus.length === 0 ? (
-                <div className="text-center py-12 rounded-[10px] border border-dashed border-secondary/20 bg-white text-secondary text-sm font-medium">
+                <div style={{ textAlign: "center", padding: "40px 0", backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", fontSize: "12px", color: "rgba(114, 106, 99, 0.6)" }}>
                   No menus have been created yet. Specify a publish date to begin.
                 </div>
               ) : (
                 menus.map((menu) => (
-                  <div key={menu.id} className="rounded-[10px] border border-secondary/20 bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
+                  <div key={menu.id} style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px", display: "flex", flexDirection: "column", gap: "20px" }}>
                     {/* Card Header */}
-                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-secondary/10 pb-3">
+                    <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(114,106,99,0.1)", paddingBottom: "12px", gap: "10px" }}>
                       <div>
                         {editingMenuId === menu.id ? (
-                          <div className="flex items-center gap-2">
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <input
                               type="date"
                               value={editingMenuDate}
                               onChange={(e) => setEditingMenuDate(e.target.value)}
-                              className="rounded border border-secondary/30 px-2 py-1 text-xs text-ink focus:outline-none"
+                              style={{ padding: "6px 12px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "11px" }}
                             />
                             <button
                               onClick={() => handleUpdateMenuDate(menu.id)}
-                              className="bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-1.5 rounded hover:bg-emerald-700 transition"
+                              className="slide-btn"
+                              style={{ padding: "6px 12px", fontSize: "10px", height: "auto" }}
                             >
                               Save
                             </button>
                             <button
                               onClick={() => setEditingMenuId(null)}
-                              className="border border-secondary/30 text-secondary text-[10px] font-bold px-2.5 py-1.5 rounded hover:bg-secondary/5 transition"
+                              className="slide-btn"
+                              style={{ padding: "6px 12px", fontSize: "10px", height: "auto", backgroundColor: "transparent", border: "1px solid rgba(114,106,99,0.3)", color: "#726a63", boxShadow: "none" }}
                             >
                               Cancel
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-baseline gap-3">
-                            <h3 className="text-base font-bold text-ink">
+                          <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
+                            <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63" }}>
                               Menu for: {new Date(menu.publishDate).toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                             </h3>
                             <button
@@ -1018,36 +1050,38 @@ export default function AdminDashboard() {
                                 setEditingMenuId(menu.id);
                                 setEditingMenuDate(menu.publishDate);
                               }}
-                              className="text-xs text-primary hover:underline font-semibold"
+                              style={{ background: "none", border: "none", color: "#b7786b", fontSize: "11px", fontWeight: "700", cursor: "pointer", textDecoration: "underline" }}
                             >
                               Edit Date
                             </button>
                           </div>
                         )}
-                        <p className="text-[10px] text-secondary font-medium uppercase tracking-wider mt-1">
+                        <p style={{ fontSize: "9px", fontFamily: "monospace", color: "rgba(114, 106, 99, 0.5)", marginTop: "4px" }}>
                           ID: {menu.id}
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                         {menu.isActive ? (
-                          <span className="px-2.5 py-1 rounded bg-emerald-50 border border-emerald-300 text-emerald-700 text-[10px] font-bold uppercase tracking-wider">
+                          <span style={{ fontSize: "9px", fontWeight: "750", textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "4px 12px", borderRadius: "30px", color: "#10B981" }}>
                             Active Menu
                           </span>
                         ) : (
                           <>
-                            <span className="px-2.5 py-1 rounded bg-secondary/10 border border-secondary/20 text-secondary text-[10px] font-bold uppercase tracking-wider">
+                            <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "rgba(114, 106, 99, 0.08)", border: "1px solid rgba(114, 106, 99, 0.15)", padding: "4px 12px", borderRadius: "30px", color: "rgba(114, 106, 99, 0.7)" }}>
                               Draft
                             </span>
                             <button
                               onClick={() => handlePublishMenu(menu.id)}
-                              className="bg-primary text-white text-[10px] font-bold px-3 py-1.5 rounded hover:bg-accent hover:text-ink transition cursor-pointer"
+                              className="slide-btn"
+                              style={{ padding: "6px 15px", fontSize: "10px", height: "auto" }}
                             >
                               Publish
                             </button>
                             <button
                               onClick={() => handleDeleteMenu(menu.id)}
-                              className="border border-status-sold-out/30 text-status-sold-out text-[10px] font-bold px-3 py-1.5 rounded hover:bg-status-sold-out/10 transition cursor-pointer"
+                              className="slide-btn"
+                              style={{ padding: "6px 15px", fontSize: "10px", height: "auto", backgroundColor: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#DC2626", boxShadow: "none" }}
                             >
                               Delete
                             </button>
@@ -1057,63 +1091,67 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Menu Dishes */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-secondary">
-                          Dishes List ({menu.dishes.length})
+                    <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <h4 style={{ fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(114, 106, 99, 0.6)" }}>
+                          Dishes in Menu ({menu.dishes.length})
                         </h4>
                         <button
                           onClick={() => openAddDishModal(menu.id)}
-                          className="bg-white border border-secondary/35 text-secondary text-[10px] font-bold px-3 py-1.5 rounded hover:bg-secondary/5 transition cursor-pointer"
+                          className="slide-btn"
+                          style={{ padding: "6px 15px", fontSize: "10px", height: "auto", backgroundColor: "transparent", border: "1px solid rgba(114,106,99,0.3)", color: "#726a63", boxShadow: "none" }}
                         >
                           + Add Dish
                         </button>
                       </div>
 
                       {menu.dishes.length === 0 ? (
-                        <p className="text-xs text-secondary italic">No dishes in this menu yet. Click &apos;+ Add Dish&apos; to populate.</p>
+                        <p style={{ fontSize: "11px", color: "rgba(114, 106, 99, 0.5)", fontStyle: "italic" }}>No dishes in this menu yet. Click '+ Add Dish' to populate.</p>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "15px" }}>
                           {menu.dishes.map((dish) => (
-                            <div key={dish.id} className="border border-secondary/10 rounded-[10px] p-4 flex gap-4 bg-white relative">
+                            <div key={dish.id} style={{ border: "1px solid rgba(114, 106, 99, 0.12)", borderRadius: "15px", padding: "15px", display: "flex", gap: "12px", backgroundColor: "#ffffff" }}>
+                              
                               {/* Dish Image */}
-                              <div className="w-16 h-16 rounded-md bg-secondary/5 border border-secondary/15 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                              <div style={{ width: "50px", height: "50px", borderRadius: "8px", overflow: "hidden", backgroundColor: "rgba(114,106,99,0.05)", border: "1px solid rgba(114,106,99,0.1)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 {dish.imageUrl ? (
-                                  <img src={dish.imageUrl} alt={dish.name} className="w-full h-full object-cover" />
+                                  <img src={dish.imageUrl} alt={dish.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                 ) : (
-                                  <span className="text-[10px] text-secondary italic">No image</span>
+                                  <span style={{ fontSize: "9px", color: "rgba(114, 106, 99, 0.5)", fontStyle: "italic" }}>No image</span>
                                 )}
                               </div>
 
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-1 mb-1">
-                                  <h5 className="font-bold text-xs text-ink truncate">{dish.name}</h5>
-                                  <span className="font-bold text-xs text-primary shrink-0">KES {dish.price}</span>
-                                </div>
-                                <p className="text-[10px] text-secondary line-clamp-1 mb-2">{dish.description || "No description provided."}</p>
-                                
-                                <div className="flex items-center justify-between text-[9px] text-secondary font-medium">
-                                  <span>Portions: <strong className="text-ink">{dish.preparedQuantity}</strong></span>
-                                  {dish.isSoldOut ? (
-                                    <span className="px-1.5 py-0.5 rounded bg-status-sold-out/15 text-status-sold-out font-bold uppercase tracking-wider">Sold Out</span>
-                                  ) : (
-                                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold uppercase tracking-wider">Available</span>
-                                  )}
+                              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                                <div>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: "6px" }}>
+                                    <h5 style={{ fontSize: "12px", fontWeight: "700", color: "#726a63", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dish.name}</h5>
+                                    <span style={{ fontSize: "12px", fontWeight: "750", color: "#b7786b" }}>KES {dish.price}</span>
+                                  </div>
+                                  <p style={{ fontSize: "10px", color: "rgba(114, 106, 99, 0.6)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", margin: "3px 0 6px" }}>{dish.description || "No description."}</p>
+                                  
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "9px" }}>
+                                    <span>Portions: <strong style={{ color: "#726a63" }}>{dish.preparedQuantity}</strong></span>
+                                    {dish.isSoldOut ? (
+                                      <span style={{ fontSize: "8px", fontWeight: "700", backgroundColor: "#DC2626", color: "#ffffff", padding: "2px 6px", borderRadius: "5px" }}>SOLD OUT</span>
+                                    ) : (
+                                      <span style={{ fontSize: "8px", fontWeight: "700", backgroundColor: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10B981", padding: "2px 6px", borderRadius: "5px" }}>AVAILABLE</span>
+                                    )}
+                                  </div>
                                 </div>
 
                                 {/* Dish Actions */}
-                                <div className="flex items-center justify-between mt-3 pt-2 border-t border-secondary/5">
-                                  <div className="flex items-center gap-2">
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(114, 106, 99, 0.08)", paddingTop: "8px", marginTop: "10px" }}>
+                                  <div style={{ display: "flex", gap: "8px", fontSize: "10px" }}>
                                     <button
                                       onClick={() => openEditDishModal(menu.id, dish)}
-                                      className="text-[10px] font-bold text-secondary hover:text-primary transition cursor-pointer"
+                                      style={{ background: "none", border: "none", color: "#726a63", fontWeight: "700", cursor: "pointer" }}
                                     >
                                       Edit
                                     </button>
-                                    <span className="text-secondary/30">|</span>
+                                    <span style={{ color: "rgba(114, 106, 99, 0.3)" }}>|</span>
                                     <button
                                       onClick={() => handleDeleteDish(dish.id)}
-                                      className="text-[10px] font-bold text-status-sold-out/85 hover:text-status-sold-out transition cursor-pointer"
+                                      style={{ background: "none", border: "none", color: "#DC2626", fontWeight: "700", cursor: "pointer" }}
                                     >
                                       Remove
                                     </button>
@@ -1122,12 +1160,13 @@ export default function AdminDashboard() {
                                   {menu.isActive && !dish.isSoldOut && (
                                     <button
                                       onClick={() => handleMarkSoldOut(dish.id)}
-                                      className="text-[9px] font-bold bg-status-sold-out/10 border border-status-sold-out/30 text-status-sold-out px-2 py-1 rounded hover:bg-status-sold-out/20 transition cursor-pointer"
+                                      style={{ fontSize: "8px", fontWeight: "700", border: "1px solid rgba(220,38,38,0.2)", backgroundColor: "rgba(220,38,38,0.05)", color: "#DC2626", padding: "3px 8px", borderRadius: "5px", cursor: "pointer" }}
                                     >
                                       Flag Sold Out
                                     </button>
                                   )}
                                 </div>
+
                               </div>
                             </div>
                           ))}
@@ -1143,37 +1182,39 @@ export default function AdminDashboard() {
 
         {/* TAB 2: STAFF ACCOUNT PROVISIONING */}
         {activeTab === "staff" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "30px" }} className="grid lg:grid-cols-3">
             {/* Main Provision Form */}
-            <div className="lg:col-span-2 rounded-[10px] border border-secondary/20 bg-white p-8 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-              <h2 className="text-lg font-bold mb-6 text-primary border-b border-secondary/15 pb-3">
+            <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "30px" }} className="lg:col-span-2">
+              <h2 style={{ fontSize: "15px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "#726a63", borderBottom: "1px solid rgba(114,106,99,0.15)", paddingBottom: "12px", marginBottom: "25px" }}>
                 Provision Staff Account
               </h2>
 
-              <form onSubmit={handleProvision} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
+              <form onSubmit={handleProvision} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+                  <div style={{ flex: "1 1 200px" }}>
+                    <label htmlFor="staffNameInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>
                       Full Name
                     </label>
                     <input
+                      id="staffNameInput"
                       type="text"
                       required
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Jane Doe"
-                      className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none transition"
+                      style={{ width: "100%", padding: "10px 15px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
+                  <div style={{ flex: "1 1 200px" }}>
+                    <label htmlFor="staffRoleSelect" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>
                       Role
                     </label>
                     <select
+                      id="staffRoleSelect"
                       value={role}
                       onChange={(e) => setRole(e.target.value)}
-                      className="w-full rounded-[10px] border border-secondary/30 bg-white px-4 py-3 text-sm text-ink focus:border-primary focus:outline-none transition appearance-none cursor-pointer"
+                      style={{ width: "100%", padding: "10px 15px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "#ffffff", cursor: "pointer" }}
                     >
                       <option value="Cashier">Cashier</option>
                       <option value="ServingStaff">Serving Staff</option>
@@ -1183,192 +1224,199 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+                  <div style={{ flex: "1 1 200px" }}>
+                    <label htmlFor="staffEmailInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>
                       Email Address
                     </label>
                     <input
+                      id="staffEmailInput"
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="staff@strathmore.edu"
-                      className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none transition"
+                      style={{ width: "100%", padding: "10px 15px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
+                  <div style={{ flex: "1 1 200px" }}>
+                    <label htmlFor="staffPasswordInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>
                       Password
                     </label>
                     <input
+                      id="staffPasswordInput"
                       type="password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none transition"
+                      style={{ width: "100%", padding: "10px 15px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
+                  <label htmlFor="staffPhoneInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "8px" }}>
                     Phone Number (Optional)
                   </label>
                   <input
+                    id="staffPhoneInput"
                     type="text"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="07XXXXXXXX"
-                    className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none transition"
+                    style={{ width: "100%", padding: "10px 15px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
                   />
                 </div>
 
                 {role === "Cashier" && (
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-primary mb-2">
+                    <label htmlFor="staffStationInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "#b7786b", marginBottom: "8px" }}>
                       Station Number (Cashier Specific)
                     </label>
                     <input
+                      id="staffStationInput"
                       type="text"
                       required
                       value={stationNumber}
                       onChange={(e) => setStationNumber(e.target.value)}
                       placeholder="e.g. ST-05"
-                      className="w-full rounded-[10px] border border-accent bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none transition"
+                      style={{ width: "100%", padding: "10px 15px", border: "1px solid #b7786b", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
                     />
                   </div>
                 )}
 
                 {role === "Admin" && (
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-primary mb-2">
+                    <label htmlFor="staffDeptInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "#b7786b", marginBottom: "8px" }}>
                       Department (Admin Specific)
                     </label>
                     <input
+                      id="staffDeptInput"
                       type="text"
                       required
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
                       placeholder="e.g. Finance / IT"
-                      className="w-full rounded-[10px] border border-accent bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none transition"
+                      style={{ width: "100%", padding: "10px 15px", border: "1px solid #b7786b", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
                     />
                   </div>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={provisionLoading}
-                  className="w-full rounded-[10px] bg-primary py-3 text-sm font-bold text-white shadow-sm hover:bg-accent hover:text-ink transition active:scale-[0.98] disabled:opacity-50 mt-2 cursor-pointer"
-                >
+                <button type="submit" disabled={provisionLoading} className="slide-btn" style={{ width: "100%", height: "48px" }}>
                   {provisionLoading ? "Provisioning..." : `Provision New ${role}`}
                 </button>
               </form>
             </div>
 
             {/* Quick Info */}
-            <div className="bg-white border border-secondary/20 rounded-[10px] p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-              <h3 className="text-base font-bold text-primary mb-3 border-b border-secondary/15 pb-2">
+            <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63", borderBottom: "1px solid rgba(114,106,99,0.15)", paddingBottom: "12px", marginBottom: "15px" }}>
                 Role Context & Rules
               </h3>
-              <ul className="text-xs text-secondary space-y-4">
+              <ul style={{ fontSize: "11px", color: "rgba(114, 106, 99, 0.8)", listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "15px" }}>
                 <li>
-                  <strong className="text-ink block mb-1">Cashier</strong>
-                  Operates the Cashier Terminal workspace. Handles manual orders, CASH payments, and trigger-request of M-Pesa push transactions.
+                  <strong style={{ color: "#726a63", display: "block", marginBottom: "3px" }}>Cashier</strong>
+                  Operates the Cashier Terminal counter workflow. Logs cash transactions and split push alerts to students.
                 </li>
                 <li>
-                  <strong className="text-ink block mb-1">Serving Staff</strong>
-                  Operates the lookup station at the pick-up counter. Verifies pre-order reference codes and marks orders as collected.
+                  <strong style={{ color: "#726a63", display: "block", marginBottom: "3px" }}>Serving Staff</strong>
+                  Operates the collection counter lookup page. Dispatches student dishes in real-time.
                 </li>
                 <li>
-                  <strong className="text-ink block mb-1">Kitchen Staff</strong>
-                  Operates the Kitchen Display screen. Views incoming prep queues, marks dishes prepare counts, and monitors active items.
+                  <strong style={{ color: "#726a63", display: "block", marginBottom: "3px" }}>Kitchen Staff</strong>
+                  Manages preparation monitor grid and alerts capacity levels.
                 </li>
                 <li>
-                  <strong className="text-ink block mb-1">Administrator</strong>
-                  Has access to this dashboard, publishes/updates the daily menu catalog, flags sold-out portions, and provisions team accounts.
+                  <strong style={{ color: "#726a63", display: "block", marginBottom: "3px" }}>Administrator</strong>
+                  Configures menu publications, handles low stock forecasting updates, and provisions accounts.
                 </li>
               </ul>
             </div>
           </div>
         )}
       </main>
+    </div>
 
-      {/* Add/Edit Dish Modal Popup overlay */}
+      {/* Add/Edit Dish Modal Popup Overlay */}
       {activeMenuIdForDish && (
-        <div className="fixed inset-0 bg-secondary/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[10px] border border-secondary/20 w-full max-w-lg p-6 shadow-xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <h3 className="text-lg font-bold text-ink border-b border-secondary/10 pb-3">
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(114, 106, 99, 0.4)", backdropFilter: "blur(4px)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+          <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", width: "100%", maxWidth: "500px", padding: "30px", boxShadow: "0 15px 45px rgba(0,0,0,0.1)", display: "flex", flexDirection: "column", gap: "20px", color: "#726a63", fontFamily: "Libre Franklin" }}>
+            
+            <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#726a63", borderBottom: "1px solid rgba(114,106,99,0.1)", paddingBottom: "10px" }}>
               {editingDishId ? "Modify Menu Dish" : "Add Dish to Menu"}
             </h3>
 
-            <form onSubmit={handleSaveDish} className="space-y-4">
+            <form onSubmit={handleSaveDish} style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-1.5">
+                <label htmlFor="modalDishNameInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px" }}>
                   Dish Name
                 </label>
                 <input
+                  id="modalDishNameInput"
                   type="text"
                   required
                   placeholder="e.g. Traditional Spicy Pilau"
                   value={dishName}
                   onChange={(e) => setDishName(e.target.value)}
-                  className="w-full rounded-[10px] border border-secondary/30 px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none"
+                  style={{ width: "100%", padding: "10px 15px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-1.5">
+                <label htmlFor="modalDishDescInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px" }}>
                   Description
                 </label>
                 <textarea
+                  id="modalDishDescInput"
                   placeholder="Detailed description of the recipe..."
                   value={dishDescription}
                   onChange={(e) => setDishDescription(e.target.value)}
                   rows={2}
-                  className="w-full rounded-[10px] border border-secondary/30 px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none"
+                  style={{ width: "100%", padding: "10px 15px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "15px", fontSize: "12px", outline: "none", backgroundColor: "transparent", resize: "none" }}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-1.5">
+              <div style={{ display: "flex", gap: "15px" }}>
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="modalDishPriceInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px" }}>
                     Price (KES)
                   </label>
                   <input
+                    id="modalDishPriceInput"
                     type="number"
                     required
                     min={0}
                     placeholder="250"
                     value={dishPrice}
                     onChange={(e) => setDishPrice(e.target.value)}
-                    className="w-full rounded-[10px] border border-secondary/30 px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none"
+                    style={{ width: "100%", padding: "10px 15px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
                   />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-1.5">
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="modalDishPortionsInput" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px" }}>
                     Prepared Portions
                   </label>
                   <input
+                    id="modalDishPortionsInput"
                     type="number"
                     required
                     min={0}
                     placeholder="80"
                     value={dishPreparedQty}
                     onChange={(e) => setDishPreparedQty(e.target.value)}
-                    className="w-full rounded-[10px] border border-secondary/30 px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none"
+                    style={{ width: "100%", padding: "10px 15px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "12px", outline: "none", backgroundColor: "transparent" }}
                   />
                 </div>
               </div>
 
               {/* Dietary Selection */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
+                <label style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px" }}>
                   Dietary Tags
                 </label>
-                <div className="flex flex-wrap gap-1.5">
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                   {DIETARY_TAG_OPTIONS.map((tag) => {
                     const active = dishTags.includes(tag);
                     return (
@@ -1376,11 +1424,17 @@ export default function AdminDashboard() {
                         type="button"
                         key={tag}
                         onClick={() => toggleTag(tag)}
-                        className={`text-[10px] font-bold px-2.5 py-1.5 rounded transition border cursor-pointer ${
-                          active
-                            ? "bg-accent/15 border-accent text-primary"
-                            : "bg-transparent border-secondary/30 text-secondary hover:bg-secondary/5"
-                        }`}
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: "10px",
+                          fontWeight: "700",
+                          borderRadius: "15px",
+                          border: active ? "1px solid #b7786b" : "1px solid rgba(114, 106, 99, 0.3)",
+                          backgroundColor: active ? "rgba(183, 120, 107, 0.08)" : "#ffffff",
+                          color: active ? "#b7786b" : "#726a63",
+                          cursor: "pointer",
+                          transition: "all 0.2s"
+                        }}
                       >
                         {tag}
                       </button>
@@ -1390,40 +1444,43 @@ export default function AdminDashboard() {
               </div>
 
               {/* Meal Image Upload Section */}
-              <div className="border border-secondary/15 rounded-[10px] p-4 bg-background/50 flex items-center gap-4">
-                <div className="w-16 h-16 rounded bg-secondary/5 border border-secondary/15 overflow-hidden flex items-center justify-center flex-shrink-0">
+              <div style={{ border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "15px", padding: "12px", backgroundColor: "#faf9f7", display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ width: "48px", height: "48px", borderRadius: "8px", overflow: "hidden", backgroundColor: "rgba(114,106,99,0.05)", border: "1px solid rgba(114,106,99,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   {dishImageUrl ? (
-                    <img src={dishImageUrl} alt="Upload preview" className="w-full h-full object-cover" />
+                    <img src={dishImageUrl} alt="Upload preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
-                    <span className="text-[9px] text-secondary italic text-center">No Image</span>
+                    <span style={{ fontSize: "9px", color: "rgba(114,106,99,0.5)", fontStyle: "italic", textAlign: "center" }}>No Image</span>
                   )}
                 </div>
-                <div className="flex-1">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-1.5">
-                    Upload Meal Image
+                <div style={{ flexGrow: 1 }}>
+                  <label htmlFor="modalImageUpload" style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>
+                    Meal Photo
                   </label>
                   <input
+                    id="modalImageUpload"
                     type="file"
                     accept="image/*"
                     onChange={(e) => void handleImageUpload(e)}
-                    className="block w-full text-xs text-secondary file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white file:cursor-pointer hover:file:opacity-90 file:transition"
+                    style={{ fontSize: "10px", width: "100%" }}
                   />
-                  {uploadingImage && <p className="text-[10px] text-primary font-bold mt-1 animate-pulse">Uploading file...</p>}
+                  {uploadingImage && <p style={{ fontSize: "9px", color: "#b7786b", fontWeight: "700", marginTop: "3px", animation: "pulse 1.5s infinite" }}>Uploading file...</p>}
                 </div>
               </div>
 
               {/* Form Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-secondary/10">
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px", borderTop: "1px solid rgba(114,106,99,0.08)", paddingTop: "15px" }}>
                 <button
                   type="button"
                   onClick={closeDishModal}
-                  className="rounded-[10px] border border-secondary/35 text-secondary text-xs font-bold px-4 py-2.5 hover:bg-secondary/5 transition cursor-pointer"
+                  className="slide-btn"
+                  style={{ height: "auto", padding: "10px 18px", backgroundColor: "transparent", border: "1px solid rgba(114,106,99,0.3)", color: "#726a63", boxShadow: "none" }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-[10px] bg-primary text-white text-xs font-bold px-5 py-2.5 hover:bg-accent hover:text-ink transition cursor-pointer"
+                  className="slide-btn"
+                  style={{ height: "auto", padding: "10px 22px" }}
                 >
                   Save Dish
                 </button>
@@ -1433,10 +1490,26 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-secondary/15 py-6 text-center text-[10px] text-secondary font-semibold bg-white px-6">
-        <p>© {new Date().getFullYear()} CaféQ. Strathmore University Cafeteria. Kenya Data Protection Act 2019 Compliant.</p>
+      {/* FOOTER */}
+      <footer className="footer" style={{ marginTop: "auto" }}>
+        <p style={{ fontSize: "10px", color: "rgba(114,106,99,0.6)", textAlign: "center" }}>
+          © {new Date().getFullYear()} CaféQ. Strathmore University Cafeteria. Kenya Data Protection Act 2019 Compliant.
+        </p>
       </footer>
+
+      {/* CSS KEYFRAMES FOR ROTATION */}
+      <style jsx global>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: .5; }
+        }
+      `}</style>
+
     </div>
   );
 }
+
