@@ -32,7 +32,10 @@ describe('ReferenceService', () => {
     configServiceMock = {
       get: jest.fn((key: string) => {
         if (key === 'sms.apiKey') return 'mock-api-key';
-        if (key === 'sms.username') return 'sandbox';
+        if (key === 'sms.senderId') return 'CafeQ';
+        if (key === 'sms.baseUrl') return 'https://kenyasms.com/api/v1';
+        if (key === 'sms.sandbox') return true;
+        if (key === 'sms.messageType') return 'transactional';
         return null;
       }),
     };
@@ -140,7 +143,7 @@ describe('ReferenceService', () => {
       );
     });
 
-    it("should call fetch to dispatch SMS via Africa's Talking Sandbox", async () => {
+    it("should call fetch to dispatch SMS via KenyaSMS Sandbox", async () => {
       orderRepoMock.findOne.mockResolvedValue({
         id: 'order-123',
         userId: 'user-123',
@@ -153,21 +156,22 @@ describe('ReferenceService', () => {
 
       const fetchMock = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ status: 'Success' }),
+        json: () => Promise.resolve({ success: true, data: { status: 'Success' } }),
       });
       global.fetch = fetchMock;
 
       await service.sendPaymentConfirmationSms('order-123', 'REF123');
 
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://api.sandbox.africastalking.com/version1/messaging',
+        'https://kenyasms.com/api/v1/sms/send',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
-            apiKey: 'mock-api-key',
-            'Content-Type': 'application/x-www-form-urlencoded',
+            Authorization: 'Bearer mock-api-key',
+            'X-Sandbox-Mode': 'true',
+            'Content-Type': 'application/json',
           }),
-          body: expect.stringContaining('to=%2B254712345678'),
+          body: expect.stringContaining('"recipient":"+254712345678"'),
         }),
       );
     });

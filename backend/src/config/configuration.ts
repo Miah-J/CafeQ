@@ -27,7 +27,10 @@ export default () => ({
     simulate: process.env.MPESA_SIMULATE === 'true',
   },
   sms: {
-    apiKey: process.env.SMS_API_KEY,
-    username: process.env.SMS_USERNAME || 'sandbox',
+    apiKey: process.env.KENYASMS_API_KEY || process.env.SMS_API_KEY,
+    senderId: process.env.KENYASMS_SENDER_ID || 'CafeQ',
+    baseUrl: process.env.KENYASMS_BASE_URL || 'https://kenyasms.com/api/v1',
+    sandbox: process.env.SMS_SANDBOX === 'true',
+    messageType: process.env.KENYASMS_MESSAGE_TYPE || 'transactional',
   },
 });

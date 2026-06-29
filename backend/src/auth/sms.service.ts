@@ -37,8 +37,9 @@ export class SmsService {
     message: string,
   ): Promise<void> {
     const apiKey = this.configService.get<string>('sms.apiKey');
-    const username =
-      this.configService.get<string>('sms.username') || 'sandbox';
+    const senderId = this.configService.get<string>('sms.senderId') || 'CafeQ';
+    const baseUrl = this.configService.get<string>('sms.baseUrl') || 'https://kenyasms.com/api/v1';
+    const isSandbox = this.configService.get<boolean>('sms.sandbox') || apiKey?.startsWith('sandbox_');
 
     if (!apiKey) {
       this.logger.warn(
@@ -47,38 +48,47 @@ export class SmsService {
       return;
     }
 
-    const isSandbox = username.toLowerCase() === 'sandbox';
-    const baseUrl = isSandbox
-      ? 'http://api.sandbox.africastalking.com/version1/messaging'
-      : 'https://api.africastalking.com/version1/messaging';
-
-    const bodyParams = new URLSearchParams();
-    bodyParams.append('username', username);
-    bodyParams.append('to', to);
-    bodyParams.append('message', message);
-
     this.logger.log(
-      `Dispatching SMS to ${to} via Africa's Talking Gateway (${username}): "${message}"`,
+      `Dispatching SMS to ${to} via KenyaSMS Gateway (${senderId}): "${message}"`,
     );
 
-    const res = await fetch(baseUrl, {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    };
+
+    if (isSandbox) {
+      headers['X-Sandbox-Mode'] = 'true';
+    }
+
+    const messageType = this.configService.get<string>('sms.messageType') || 'transactional';
+
+    const res = await fetch(`${baseUrl}/sms/send`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Accept: 'application/json',
-        apiKey: apiKey,
-      },
-      body: bodyParams.toString(),
+      headers,
+      body: JSON.stringify({
+        sender_id: senderId,
+        recipient: to,
+        message: message,
+        message_type: messageType,
+      }),
     });
 
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(
-        `Africa's Talking API returned status ${res.status}: ${errorText}`,
+        `KenyaSMS API returned status ${res.status}: ${errorText}`,
       );
     }
 
-    const data = (await res.json()) as Record<string, unknown>;
+    const data = (await res.json()) as Record<string, any>;
+    if (data.success === false) {
+      throw new Error(
+        `KenyaSMS API error: ${data.error?.message || 'Unknown error'}`,
+      );
+    }
+
     this.logger.log(`SMS gateway response: ${JSON.stringify(data)}`);
   }
 }
