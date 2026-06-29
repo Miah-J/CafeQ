@@ -6,6 +6,7 @@ import {
   IsNumber,
   Min,
   IsArray,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateMenuDto {
@@ -66,4 +67,8 @@ export class UpdateDishDto {
   @IsString()
   @IsOptional()
   imageUrl?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isSoldOut?: boolean;
 }

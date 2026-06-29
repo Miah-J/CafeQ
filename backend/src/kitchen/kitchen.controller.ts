@@ -14,4 +14,10 @@ export class KitchenController {
   async getDishes() {
     return this.kitchenService.getActiveMenuDishes();
   }
+
+  @Get('tickets')
+  @Roles('KitchenStaff', 'Admin', 'ServingStaff')
+  async getTickets() {
+    return this.kitchenService.getActivePreparationTickets();
+  }
 }

@@ -40,7 +40,7 @@ export class MenusController {
 
   @Patch('dishes/:dishId')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Admin')
+  @Roles('Admin', 'KitchenStaff')
   async editDish(@Param('dishId') dishId: string, @Body() dto: UpdateDishDto) {
     return this.menusService.editDish(dishId, dto);
   }
@@ -61,7 +61,7 @@ export class MenusController {
 
   @Patch('dishes/:dishId/sold-out')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('Admin')
+  @Roles('Admin', 'KitchenStaff')
   async markDishSoldOut(@Param('dishId') dishId: string) {
     return this.menusService.markDishSoldOut(dishId);
   }

@@ -6,9 +6,10 @@ import { OrderItem } from '../orders/entities/order-item.entity';
 import { MenusService } from './menus.service';
 import { MenusController } from './menus.controller';
 import { DbModule } from '../db/db.module';
+import { KitchenModule } from '../kitchen/kitchen.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Menu, Dish, OrderItem]), DbModule],
+  imports: [TypeOrmModule.forFeature([Menu, Dish, OrderItem]), DbModule, KitchenModule],
   controllers: [MenusController],
   providers: [MenusService],
   exports: [MenusService],

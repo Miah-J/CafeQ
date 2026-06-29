@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Menu } from '../menus/entities/menu.entity';
 import { Dish } from '../menus/entities/dish.entity';
 import { OrderItem } from '../orders/entities/order-item.entity';
@@ -89,4 +89,55 @@ export class KitchenService {
       this.logger.error(`Failed to trigger dish update for ${dishId}: ${errMsg}`);
     }
   }
+
+  async getActivePreparationTickets() {
+    const items = await this.orderItemRepository.find({
+      where: {
+        status: 'PENDING',
+        order: {
+          status: In(['CONFIRMED', 'PARTIALLY_COLLECTED']),
+        },
+      },
+      relations: {
+        order: {
+          referenceNumber: true,
+        },
+      },
+      order: {
+        order: {
+          createdAt: 'ASC',
+        },
+      },
+    });
+
+    const ticketsMap = new Map<string, any>();
+    for (const item of items) {
+      const order = item.order;
+      const refCode = order.referenceNumber ? order.referenceNumber.referenceCode : 'N/A';
+      
+      const dish = await this.dishRepository.findOne({ where: { id: item.dishId } });
+      const dishName = dish ? dish.name : 'Unknown Dish';
+      
+      if (!ticketsMap.has(order.id)) {
+        ticketsMap.set(order.id, {
+          orderId: order.id,
+          referenceCode: refCode,
+          createdAt: order.createdAt,
+          status: order.status,
+          items: [],
+        });
+      }
+      
+      ticketsMap.get(order.id).items.push({
+        itemId: item.id,
+        dishId: item.dishId,
+        dishName: dishName,
+        quantity: item.quantity,
+        status: item.status,
+      });
+    }
+
+    return Array.from(ticketsMap.values());
+  }
 }
+

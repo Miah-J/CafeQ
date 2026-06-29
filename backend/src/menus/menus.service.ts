@@ -10,6 +10,7 @@ import { Dish } from './entities/dish.entity';
 import { OrderItem } from '../orders/entities/order-item.entity';
 import { CreateMenuDto, CreateDishDto, UpdateDishDto } from './dto/menus.dto';
 import { RedisService } from '../db/redis.service';
+import { KitchenService } from '../kitchen/kitchen.service';
 
 @Injectable()
 export class MenusService {
@@ -21,6 +22,7 @@ export class MenusService {
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
     private readonly redisService: RedisService,
+    private readonly kitchenService: KitchenService,
   ) {}
 
   async createMenu(dto: CreateMenuDto): Promise<Menu> {
@@ -72,18 +74,50 @@ export class MenusService {
     const oldQuantity = dish.preparedQuantity;
     Object.assign(dish, dto);
 
+    if (dto.isSoldOut !== undefined) {
+      if (dto.isSoldOut) {
+        dish.soldOutAt = new Date();
+      } else {
+        dish.soldOutAt = null;
+      }
+    }
+
     const savedDish = await this.dishRepository.save(dish);
 
-    if (dish.menu.isActive && dto.preparedQuantity !== undefined) {
-      const delta = dto.preparedQuantity - oldQuantity;
+    if (dish.menu.isActive) {
       const redis = this.redisService.getClient();
       const key = `dish:availability:${dish.id}`;
 
-      if (delta > 0) {
-        await redis.incrby(key, delta);
-      } else if (delta < 0) {
-        await redis.decrby(key, Math.abs(delta));
+      if (dto.preparedQuantity !== undefined) {
+        const delta = dto.preparedQuantity - oldQuantity;
+        if (delta > 0) {
+          await redis.incrby(key, delta);
+        } else if (delta < 0) {
+          await redis.decrby(key, Math.abs(delta));
+        }
       }
+
+      if (dto.isSoldOut !== undefined) {
+        if (dto.isSoldOut) {
+          await redis.set(key, 0);
+        } else {
+          // Re-calculate remaining capacity based on confirmed orders
+          const result = await this.orderItemRepository
+            .createQueryBuilder('oi')
+            .select('SUM(oi.quantity)', 'sum')
+            .innerJoin('oi.order', 'o')
+            .where('oi.dishId = :dishId', { dishId: dish.id })
+            .andWhere('o.status IN (:...statuses)', {
+              statuses: ['CONFIRMED', 'PARTIALLY_COLLECTED', 'COLLECTED'],
+            })
+            .getRawOne<{ sum: string | null }>();
+          const count = result?.sum ? parseInt(result.sum, 10) : 0;
+          const remaining = Math.max(0, dish.preparedQuantity - count);
+          await redis.set(key, remaining);
+        }
+      }
+
+      void this.kitchenService.triggerDishUpdate(dish.id);
     }
 
     return savedDish;
@@ -162,6 +196,8 @@ export class MenusService {
     if (dish.menu.isActive) {
       const redis = this.redisService.getClient();
       await redis.set(`dish:availability:${dish.id}`, 0);
+      
+      void this.kitchenService.triggerDishUpdate(dish.id);
     }
 
     return savedDish;
