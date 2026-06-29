@@ -54,73 +54,95 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4 text-ink font-sans">
-      <div className="w-full max-w-md rounded-[10px] border border-secondary/20 bg-white p-8 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-        <div className="text-center mb-8">
-          <Link href="/" className="text-3xl font-extrabold tracking-tight text-primary hover:opacity-90 transition">
-            CaféQ
-          </Link>
-          <p className="mt-2 text-xs text-secondary font-medium uppercase tracking-wider">
-            Strathmore University Cafeteria System
-          </p>
+    <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      
+      {/* ANNOUNCEMENT BAR (MARQUEE) */}
+      <div className="announcement-bar">
+        <div className="announcement-bar__content">
+          <span className="announcement-bar__item">Fast Campus Handovers</span>
+          <span className="announcement-bar__item">Skip The Cafeteria Queue</span>
+          <span className="announcement-bar__item">Pay Securely via M-Pesa STK Push</span>
+          <span className="announcement-bar__item">Live Portion Stock Tracking</span>
+          {/* Repeated for marquee loop */}
+          <span className="announcement-bar__item">Fast Campus Handovers</span>
+          <span className="announcement-bar__item">Skip The Cafeteria Queue</span>
+          <span className="announcement-bar__item">Pay Securely via M-Pesa STK Push</span>
+          <span className="announcement-bar__item">Live Portion Stock Tracking</span>
         </div>
-
-        {error && (
-          <div className="mb-6 rounded-[10px] bg-status-sold-out/10 border border-status-sold-out/30 p-3.5 text-xs text-status-sold-out font-bold">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. student@strathmore.edu"
-              className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-[10px] border border-secondary/30 bg-transparent px-4 py-3 text-sm text-ink placeholder-secondary/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-[10px] bg-primary py-3 text-sm font-bold text-white shadow-sm hover:bg-accent hover:text-ink transition active:scale-[0.98] disabled:opacity-50"
-          >
-            {loading ? "Authenticating..." : "Sign In"}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-xs border-t border-secondary/15 pt-6">
-          <span className="text-secondary font-medium">Don&apos;t have an account? </span>
-          <button
-            onClick={() => router.push("/register")}
-            className="text-primary hover:text-accent font-bold transition"
-          >
-            Register here
-          </button>
-        </div>
-
-
       </div>
+
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+        <div style={{ width: "100%", maxWidth: "450px", backgroundColor: "#ffffff", borderRadius: "20px", border: "1px solid rgba(114, 106, 99, 0.15)", padding: "40px", boxShadow: "0 10px 45px rgba(0,0,0,0.03)", fontFamily: "Libre Franklin", color: "#726a63" }}>
+          
+          <div style={{ textAlign: "center", marginBottom: "35px" }}>
+            <Link href="/" className="logo" style={{ display: "inline-flex", justifyContent: "center" }}>
+              CAFÉQ
+            </Link>
+            <p style={{ marginTop: "10px", fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(114, 106, 99, 0.6)" }}>
+              Strathmore Cafeteria Portal
+            </p>
+          </div>
+
+          {error && (
+            <div style={{ marginBottom: "25px", padding: "12px 18px", backgroundColor: "rgba(220, 38, 38, 0.08)", border: "1px solid rgba(220, 38, 38, 0.2)", borderRadius: "10px", color: "#DC2626", fontSize: "12px", fontWeight: "700" }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            <div>
+              <label htmlFor="emailInput" style={{ display: "block", fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>
+                Email Address
+              </label>
+              <input
+                id="emailInput"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. student@strathmore.edu"
+                style={{ width: "100%", padding: "12px 20px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "13px", outline: "none", backgroundColor: "transparent", color: "#726a63" }}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="passwordInput" style={{ display: "block", fontSize: "10px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>
+                Password
+              </label>
+              <input
+                id="passwordInput"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                style={{ width: "100%", padding: "12px 20px", border: "1px solid rgba(114, 106, 99, 0.3)", borderRadius: "30px", fontSize: "13px", outline: "none", backgroundColor: "transparent", color: "#726a63" }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="slide-btn"
+              style={{ width: "100%", marginTop: "10px" }}
+            >
+              {loading ? "Authenticating..." : "Sign In"}
+            </button>
+          </form>
+
+          <div style={{ marginTop: "30px", textAlign: "center", fontSize: "12px", borderTop: "1px solid rgba(114, 106, 99, 0.15)", paddingTop: "25px" }}>
+            <span style={{ color: "rgba(114, 106, 99, 0.7)" }}>Don&apos;t have an account? </span>
+            <button
+              onClick={() => router.push("/register")}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#b7786b", fontWeight: "700" }}
+            >
+              Register here
+            </button>
+          </div>
+
+        </div>
+      </div>
+
     </div>
   );
 }
