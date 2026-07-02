@@ -110,8 +110,8 @@ export default function Register() {
       setSuccess("Successfully verified and registered!");
 
       // Auto login
-      localStorage.setItem("token", data.accessToken);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      sessionStorage.setItem("token", data.accessToken);
+      sessionStorage.setItem("user", JSON.stringify(data.user));
 
       setTimeout(() => {
         router.push("/menu");
@@ -127,20 +127,7 @@ export default function Register() {
   return (
     <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       
-      {/* ANNOUNCEMENT BAR (MARQUEE) */}
-      <div className="announcement-bar">
-        <div className="announcement-bar__content">
-          <span className="announcement-bar__item">Fast Campus Handovers</span>
-          <span className="announcement-bar__item">Skip The Cafeteria Queue</span>
-          <span className="announcement-bar__item">Pay Securely via M-Pesa STK Push</span>
-          <span className="announcement-bar__item">Live Portion Stock Tracking</span>
-          {/* Repeated for marquee loop */}
-          <span className="announcement-bar__item">Fast Campus Handovers</span>
-          <span className="announcement-bar__item">Skip The Cafeteria Queue</span>
-          <span className="announcement-bar__item">Pay Securely via M-Pesa STK Push</span>
-          <span className="announcement-bar__item">Live Portion Stock Tracking</span>
-        </div>
-      </div>
+
 
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
         <div style={{ width: "100%", maxWidth: "550px", backgroundColor: "#ffffff", borderRadius: "20px", border: "1px solid rgba(114, 106, 99, 0.15)", padding: "40px", boxShadow: "0 10px 45px rgba(0,0,0,0.03)", fontFamily: "Libre Franklin", color: "#726a63" }}>
