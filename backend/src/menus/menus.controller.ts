@@ -59,6 +59,13 @@ export class MenusController {
     return this.menusService.publishMenu(menuId);
   }
 
+  @Post(':menuId/unpublish')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Admin')
+  async unpublishMenu(@Param('menuId') menuId: string) {
+    return this.menusService.unpublishMenu(menuId);
+  }
+
   @Patch('dishes/:dishId/sold-out')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Admin', 'KitchenStaff')
@@ -67,7 +74,6 @@ export class MenusController {
   }
 
   @Get('active')
-  @UseGuards(JwtAuthGuard)
   async getActiveMenu(@Query('tags') tags?: string): Promise<unknown> {
     const dietaryTags = tags ? tags.split(',') : undefined;
     return this.menusService.getActiveMenu(dietaryTags);

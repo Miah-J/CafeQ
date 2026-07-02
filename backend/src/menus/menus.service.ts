@@ -161,7 +161,7 @@ export class MenusService {
       throw new NotFoundException(`Menu with ID ${menuId} not found`);
     }
 
-    await this.menuRepository.update({}, { isActive: false });
+    await this.menuRepository.update({ isActive: true }, { isActive: false });
 
     menu.isActive = true;
     const savedMenu = await this.menuRepository.save(menu);
@@ -175,6 +175,27 @@ export class MenusService {
       dish.lowStockAt = null;
       dish.soldOutAt = null;
       await this.dishRepository.save(dish);
+    }
+
+    return savedMenu;
+  }
+
+  async unpublishMenu(menuId: string): Promise<Menu> {
+    const menu = await this.menuRepository.findOne({
+      where: { id: menuId },
+      relations: { dishes: true },
+    });
+    if (!menu) {
+      throw new NotFoundException(`Menu with ID ${menuId} not found`);
+    }
+
+    menu.isActive = false;
+    const savedMenu = await this.menuRepository.save(menu);
+
+    const redis = this.redisService.getClient();
+    for (const dish of menu.dishes) {
+      const key = `dish:availability:${dish.id}`;
+      await redis.del(key);
     }
 
     return savedMenu;

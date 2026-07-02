@@ -7,7 +7,6 @@ import { OrderItem } from '../orders/entities/order-item.entity';
 import { Dish } from '../menus/entities/dish.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Menu } from '../menus/entities/menu.entity';
-import { ForecastingService } from '../forecasting/forecasting.service';
 import { RedisService } from '../db/redis.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -28,7 +27,6 @@ export class AnalyticsController {
     private readonly paymentRepository: Repository<Payment>,
     @InjectRepository(Menu)
     private readonly menuRepository: Repository<Menu>,
-    private readonly forecastingService: ForecastingService,
     private readonly redisService: RedisService,
   ) {}
 
@@ -79,63 +77,6 @@ export class AnalyticsController {
     };
   }
 
-  @Get('dish-demand')
-  async getDishDemand() {
-    const activeMenu = await this.menuRepository.findOne({
-      where: { isActive: true },
-      relations: { dishes: true },
-    });
-
-    if (!activeMenu) {
-      return { dishes: [] };
-    }
-
-    const dishNames = activeMenu.dishes.map((d) => d.name);
-    const forecasts = await this.forecastingService.getRecommendedQuantities(dishNames);
-
-    const redis = this.redisService.getClient();
-    const resultDishes = [];
-
-    for (const dish of activeMenu.dishes) {
-      const key = `dish:availability:${dish.id}`;
-      const liveVal = await redis.get(key);
-      const remainingQty = liveVal !== null ? Math.max(0, parseInt(liveVal, 10)) : 0;
-
-      // Confirmed orders quantity (ordered in active daily menu)
-      const confirmedOrdersRes = await this.orderItemRepository
-        .createQueryBuilder('oi')
-        .select('SUM(oi.quantity)', 'total')
-        .innerJoin(Order, 'o', 'oi.order_id = o.id')
-        .where('oi.dish_id = :dishId', { dishId: dish.id })
-        .andWhere("o.status IN ('CONFIRMED', 'PARTIALLY_COLLECTED', 'COLLECTED')")
-        .getRawOne<{ total: string | null }>();
-
-      const confirmedQty = Number(confirmedOrdersRes?.total || 0);
-
-      // Collected items quantity
-      const collectedItemsRes = await this.orderItemRepository
-        .createQueryBuilder('oi')
-        .select('SUM(oi.quantity)', 'total')
-        .where('oi.dish_id = :dishId', { dishId: dish.id })
-        .andWhere("oi.status = 'COLLECTED'")
-        .getRawOne<{ total: string | null }>();
-
-      const collectedQty = Number(collectedItemsRes?.total || 0);
-      const collectionRate = confirmedQty > 0 ? (collectedQty / confirmedQty) * 100 : 0;
-
-      resultDishes.push({
-        dishId: dish.id,
-        name: dish.name,
-        forecastedQty: forecasts[dish.name] || 50,
-        preparedQty: dish.preparedQuantity,
-        confirmedQty,
-        remainingQty,
-        collectionRate: Number(collectionRate.toFixed(2)),
-      });
-    }
-
-    return { dishes: resultDishes };
-  }
 
   @Get('low-stock')
   async getLowStockAlerts() {
@@ -187,6 +128,35 @@ export class AnalyticsController {
     });
 
     return { alerts };
+  }
+
+  @Get('records')
+  async getOrderRecords() {
+    const orders = await this.orderRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+
+    const payments = await this.paymentRepository.find();
+    const paymentMap = new Map<string, Payment>();
+    for (const p of payments) {
+      if (p.orderId) {
+        paymentMap.set(p.orderId, p);
+      }
+    }
+
+    return orders.map((o) => {
+      const payment = paymentMap.get(o.id);
+      return {
+        orderId: o.id,
+        userId: o.userId || 'Walk-In',
+        totalAmount: Number(o.totalAmount),
+        status: o.status,
+        pointsRedeemed: o.pointsRedeemed,
+        paymentMethod: payment?.method || 'N/A',
+        transactionReference: payment?.transactionReference || 'N/A',
+        createdAt: o.createdAt,
+      };
+    });
   }
 
   @Get('export-csv')
