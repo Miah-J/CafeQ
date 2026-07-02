@@ -5,11 +5,12 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Payment } from './entities/payment.entity';
 import { Wallet } from './entities/wallet.entity';
 import { Order } from '../orders/entities/order.entity';
+import { ReferenceNumber } from '../orders/entities/reference-number.entity';
 import { UsersService } from '../users/users.service';
 import { MenusService } from '../menus/menus.service';
 import { ReferenceService } from '../orders/reference.service';
@@ -56,6 +57,7 @@ export class PaymentsService {
     private readonly referenceService: ReferenceService,
     private readonly kitchenService: KitchenService,
     private readonly loyaltyService: LoyaltyService,
+    private readonly dataSource: DataSource,
   ) { }
 
   private formatPhoneNumber(phone: string): string {
@@ -633,6 +635,121 @@ export class PaymentsService {
     }
   }
 
+  async completePayment(payment: Payment, receiptNumber: string): Promise<void> {
+    payment.status = 'COMPLETED';
+    payment.transactionReference = receiptNumber;
+    await this.paymentRepository.save(payment);
+
+    if (payment.orderId) {
+      // Normal Checkout
+      const order = await this.orderRepository.findOne({
+        where: { id: payment.orderId },
+        relations: { items: true },
+      });
+
+      if (order) {
+        order.status = 'CONFIRMED';
+        await this.orderRepository.save(order);
+        this.logger.log(
+          `Payment confirmed for Order ID ${order.id}. Reference: ${payment.transactionReference}`,
+        );
+
+        // Generate reference and send SMS
+        const ref = await this.referenceService.generateReference(order.id);
+        void this.referenceService.sendPaymentConfirmationSms(
+          order.id,
+          ref.referenceCode,
+        );
+
+        // Trigger kitchen monitor updates
+        if (order.items) {
+          for (const item of order.items) {
+            void this.kitchenService.triggerDishUpdate(item.dishId);
+          }
+        }
+      }
+    } else if (payment.userId) {
+      // Wallet Top-Up!
+      const wallet = await this.getOrCreateWallet(payment.userId);
+      wallet.balance = Number(wallet.balance) + Number(payment.amount);
+      await this.walletRepository.save(wallet);
+      this.logger.log(
+        `Wallet top-up successful for User ID ${payment.userId}. Amount: ${payment.amount}. New balance: ${wallet.balance}`,
+      );
+    }
+  }
+
+  async failPayment(payment: Payment, reason: string): Promise<void> {
+    payment.status = 'FAILED';
+    payment.transactionReference = `FAILED_${reason.substring(0, 50)}`;
+    await this.paymentRepository.save(payment);
+
+    if (payment.orderId) {
+      // Normal Checkout failure -> Rollback Redis portions and refund wallet part if split
+      const order = await this.orderRepository.findOne({
+        where: { id: payment.orderId },
+        relations: { items: true },
+      });
+
+      if (order) {
+        order.status = 'FAILED';
+        await this.orderRepository.save(order);
+
+        // Restore loyalty points if any were redeemed
+        if (order.pointsRedeemed > 0 && order.userId) {
+          try {
+            await this.loyaltyService.restorePoints(
+              order.userId,
+              order.pointsRedeemed,
+              order.id,
+            );
+            this.logger.log(
+              `Loyalty points restored: ${order.pointsRedeemed} back to user ${order.userId}`,
+            );
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            this.logger.error(`Failed to restore loyalty points: ${errMsg}`);
+          }
+        }
+
+        // Rollback Redis Portions
+        for (const item of order.items) {
+          try {
+            await this.menusService.releasePortions(
+              item.dishId,
+              item.quantity,
+            );
+            this.logger.log(
+              `Portions released back to Redis: ${item.dishId} x${item.quantity}`,
+            );
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            this.logger.error(`Failed to release portions: ${errMsg}`);
+          }
+        }
+
+        // Refund split wallet payment if any exists
+        const walletPayment = await this.paymentRepository.findOne({
+          where: { orderId: order.id, method: 'WALLET', status: 'COMPLETED' },
+        });
+
+        if (walletPayment && payment.userId) {
+          const wallet = await this.getOrCreateWallet(payment.userId);
+          wallet.balance =
+            Number(wallet.balance) + Number(walletPayment.amount);
+          await this.walletRepository.save(wallet);
+
+          walletPayment.status = 'REFUNDED';
+          await this.paymentRepository.save(walletPayment);
+
+          this.logger.log(
+            `Split wallet payment refunded for Order ID ${order.id}. Refunded KES ${walletPayment.amount} back to User ID ${payment.userId}`,
+          );
+        }
+      }
+    }
+  }
+
   async handleCallback(payload: MpesaCallbackPayload): Promise<void> {
     const stkCallback = payload?.Body?.stkCallback;
     if (!stkCallback) {
@@ -655,130 +772,92 @@ export class PaymentsService {
       return;
     }
 
-    if (resultCode === 0) {
-      // Payment Successful
-      payment.status = 'COMPLETED';
+    if (payment.status !== 'PENDING') {
+      return;
+    }
 
-      // Retrieve receipt number from callback metadata
+    if (resultCode === 0) {
       const items = stkCallback.CallbackMetadata?.Item || [];
       const receiptItem = items.find((i) => i.Name === 'MpesaReceiptNumber');
-      if (receiptItem && receiptItem.Value !== undefined) {
-        payment.transactionReference = String(receiptItem.Value);
-      }
-
-      await this.paymentRepository.save(payment);
-
-      if (payment.orderId) {
-        // Normal Checkout
-        const order = await this.orderRepository.findOne({
-          where: { id: payment.orderId },
-          relations: { items: true },
-        });
-
-        if (order) {
-          order.status = 'CONFIRMED';
-          await this.orderRepository.save(order);
-          this.logger.log(
-            `Payment confirmed for Order ID ${order.id}. Reference: ${payment.transactionReference}`,
-          );
-
-          // Generate reference and send SMS
-          const ref = await this.referenceService.generateReference(order.id);
-          void this.referenceService.sendPaymentConfirmationSms(
-            order.id,
-            ref.referenceCode,
-          );
-
-          // Trigger kitchen monitor updates
-          if (order.items) {
-            for (const item of order.items) {
-              void this.kitchenService.triggerDishUpdate(item.dishId);
-            }
-          }
-        }
-      } else if (payment.userId) {
-        // Wallet Top-Up!
-        const wallet = await this.getOrCreateWallet(payment.userId);
-        wallet.balance = Number(wallet.balance) + Number(payment.amount);
-        await this.walletRepository.save(wallet);
-        this.logger.log(
-          `Wallet top-up successful for User ID ${payment.userId}. Amount: ${payment.amount}. New balance: ${wallet.balance}`,
-        );
-      }
+      const receiptVal = receiptItem && receiptItem.Value !== undefined ? String(receiptItem.Value) : `MPESA_${checkoutRequestId}`;
+      await this.completePayment(payment, receiptVal);
     } else {
-      // Payment Failed
-      payment.status = 'FAILED';
-      payment.transactionReference = `FAILED_${resultDesc.substring(0, 50)}`;
-      await this.paymentRepository.save(payment);
+      await this.failPayment(payment, resultDesc);
+    }
+  }
 
-      if (payment.orderId) {
-        // Normal Checkout failure -> Rollback Redis portions and refund wallet part if split
-        const order = await this.orderRepository.findOne({
-          where: { id: payment.orderId },
-          relations: { items: true },
-        });
+  async queryLiveMpesaStatus(payment: Payment): Promise<void> {
+    if (this.isMockMode()) {
+      return;
+    }
 
-        if (order) {
-          order.status = 'FAILED';
-          await this.orderRepository.save(order);
+    if (!payment.transactionReference || payment.transactionReference.startsWith('MOCK') || payment.transactionReference.startsWith('BYPASS')) {
+      return;
+    }
 
-          // Restore loyalty points if any were redeemed
-          if (order.pointsRedeemed > 0 && order.userId) {
-            try {
-              await this.loyaltyService.restorePoints(
-                order.userId,
-                order.pointsRedeemed,
-                order.id,
-              );
-              this.logger.log(
-                `Loyalty points restored: ${order.pointsRedeemed} back to user ${order.userId}`,
-              );
-            } catch (err) {
-              const errMsg = err instanceof Error ? err.message : String(err);
-              this.logger.error(`Failed to restore loyalty points: ${errMsg}`);
-            }
-          }
+    try {
+      const token = await this.getAccessToken();
+      const shortcode = this.configService.get<string>('mpesa.shortcode') || '174379';
+      const passkey = this.configService.get<string>('mpesa.passkey');
+      const timestamp = this.getMpesaTimestamp();
+      const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
 
-          // Rollback Redis Portions
-          for (const item of order.items) {
-            try {
-              await this.menusService.releasePortions(
-                item.dishId,
-                item.quantity,
-              );
-              this.logger.log(
-                `Portions released back to Redis: ${item.dishId} x${item.quantity}`,
-              );
-            } catch (err) {
-              const errMsg = err instanceof Error ? err.message : String(err);
-              this.logger.error(`Failed to release portions: ${errMsg}`);
-            }
-          }
+      const payload = {
+        BusinessShortCode: shortcode,
+        Password: password,
+        Timestamp: timestamp,
+        CheckoutRequestID: payment.transactionReference,
+      };
 
-          // Refund split wallet payment if any exists
-          const walletPayment = await this.paymentRepository.findOne({
-            where: { orderId: order.id, method: 'WALLET', status: 'COMPLETED' },
-          });
+      const res = await this.fetchWithRetry(
+        'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
 
-          if (walletPayment && payment.userId) {
-            const wallet = await this.getOrCreateWallet(payment.userId);
-            wallet.balance =
-              Number(wallet.balance) + Number(walletPayment.amount);
-            await this.walletRepository.save(wallet);
-
-            walletPayment.status = 'REFUNDED';
-            await this.paymentRepository.save(walletPayment);
-
-            this.logger.log(
-              `Split wallet payment refunded for Order ID ${order.id}. Refunded KES ${walletPayment.amount} back to User ID ${payment.userId}`,
-            );
-          }
+      if (res.ok) {
+        const data = await res.json() as { ResultCode: string; ResultDesc: string };
+        const resultCode = Number(data.ResultCode);
+        if (resultCode === 0) {
+          await this.completePayment(payment, `MPESA_${payment.transactionReference}`);
+        } else if (resultCode !== 1032 && resultCode !== 0) {
+          // If transaction is fully resolved and failed, fail the payment record
+          await this.failPayment(payment, data.ResultDesc);
         }
       }
-      this.logger.warn(
-        `Payment failed. CheckoutID: ${checkoutRequestId}. Code: ${resultCode}. Desc: ${resultDesc}`,
-      );
+    } catch (err) {
+      this.logger.error(`Error querying live M-Pesa status for payment ${payment.id}: ${err}`);
     }
+  }
+
+  async bypassOrderPayment(orderId: string): Promise<void> {
+    const payment = await this.paymentRepository.findOne({
+      where: { orderId, method: 'MPESA', status: 'PENDING' },
+    });
+
+    if (!payment) {
+      throw new BadRequestException(`No pending M-Pesa payment found for order: ${orderId}`);
+    }
+
+    await this.completePayment(payment, `BYPASS_${orderId.substring(0, 8).toUpperCase()}_${Date.now()}`);
+  }
+
+  async bypassTopUpPayment(paymentId: string): Promise<void> {
+    const payment = await this.paymentRepository.findOne({
+      where: { id: paymentId, method: 'MPESA', status: 'PENDING' },
+    });
+
+    if (!payment) {
+      throw new BadRequestException(`No pending M-Pesa top-up found with ID: ${paymentId}`);
+    }
+
+    await this.completePayment(payment, `BYPASS_TOPUP_${paymentId.substring(0, 8).toUpperCase()}_${Date.now()}`);
   }
 
   async getPaymentStatus(orderId: string): Promise<{
@@ -795,6 +874,10 @@ export class PaymentsService {
       throw new NotFoundException(
         `No payment logs found for order ID: ${orderId}`,
       );
+    }
+
+    if (payment.status === 'PENDING' && payment.method === 'MPESA') {
+      await this.queryLiveMpesaStatus(payment);
     }
 
     const ref = await this.referenceService.getReferenceByOrderId(orderId);
@@ -819,6 +902,10 @@ export class PaymentsService {
       throw new NotFoundException(
         `No payment log found for payment ID: ${paymentId}`,
       );
+    }
+
+    if (payment.status === 'PENDING' && payment.method === 'MPESA') {
+      await this.queryLiveMpesaStatus(payment);
     }
 
     const ref = payment.orderId
@@ -931,5 +1018,36 @@ export class PaymentsService {
       }
       throw err;
     }
+  }
+
+  async getTransactionHistory(userId: string): Promise<any[]> {
+    const payments = await this.paymentRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+
+    const history = [];
+    for (const payment of payments) {
+      let orderCode: string | null = null;
+      if (payment.orderId) {
+        const refNum = await this.dataSource
+          .getRepository(ReferenceNumber)
+          .findOne({ where: { orderId: payment.orderId } });
+        if (refNum) {
+          orderCode = refNum.referenceCode;
+        }
+      }
+      history.push({
+        id: payment.id,
+        amount: Number(payment.amount),
+        method: payment.method,
+        status: payment.status,
+        transactionReference: payment.transactionReference,
+        orderId: payment.orderId,
+        orderCode,
+        createdAt: payment.createdAt,
+      });
+    }
+    return history;
   }
 }

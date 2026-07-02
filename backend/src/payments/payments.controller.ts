@@ -83,6 +83,12 @@ export class PaymentsController {
     return { balance };
   }
 
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  async getTransactionHistory(@CurrentUser() user: DecryptedUser) {
+    return this.paymentsService.getTransactionHistory(user.id);
+  }
+
   @Get('status/:orderId')
   @UseGuards(JwtAuthGuard)
   async getPaymentStatus(@Param('orderId') orderId: string) {
@@ -93,6 +99,20 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   async getPaymentStatusByPaymentId(@Param('paymentId') paymentId: string) {
     return this.paymentsService.getPaymentStatusByPaymentId(paymentId);
+  }
+
+  @Post('bypass-order/:orderId')
+  @UseGuards(JwtAuthGuard)
+  async bypassOrder(@Param('orderId') orderId: string) {
+    await this.paymentsService.bypassOrderPayment(orderId);
+    return { success: true };
+  }
+
+  @Post('bypass-payment/:paymentId')
+  @UseGuards(JwtAuthGuard)
+  async bypassPayment(@Param('paymentId') paymentId: string) {
+    await this.paymentsService.bypassTopUpPayment(paymentId);
+    return { success: true };
   }
 
   @Post('mpesa/callback')
