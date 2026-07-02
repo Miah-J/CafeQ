@@ -35,8 +35,8 @@ export default function ServingLookup() {
 
   // Authentication check
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
+    const token = sessionStorage.getItem("token");
+    const storedUser = sessionStorage.getItem("user");
 
     if (!token || !storedUser) {
       router.push("/login");
@@ -120,7 +120,7 @@ export default function ServingLookup() {
     setError("");
     setOrder(null);
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     try {
       const res = await fetch(`http://localhost:3001/collection/lookup/${referenceCode}`, {
         headers: {
@@ -142,7 +142,7 @@ export default function ServingLookup() {
   };
 
   const handleMarkCollected = async (orderItemId: string) => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     setError("");
 
     try {
@@ -198,20 +198,7 @@ export default function ServingLookup() {
   return (
     <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       
-      {/* ANNOUNCEMENT BAR (MARQUEE) */}
-      <div className="announcement-bar">
-        <div className="announcement-bar__content">
-          <span className="announcement-bar__item">Strathmore University Dining</span>
-          <span className="announcement-bar__item">Serving & Dispensing Desk Monitor</span>
-          <span className="announcement-bar__item">KenyaSMS Automated Dispatch confirmations</span>
-          <span className="announcement-bar__item">Enter Student Pickup Reference Ticket</span>
-          {/* Repeated for marquee loop */}
-          <span className="announcement-bar__item">Strathmore University Dining</span>
-          <span className="announcement-bar__item">Serving & Dispensing Desk Monitor</span>
-          <span className="announcement-bar__item">KenyaSMS Automated Dispatch confirmations</span>
-          <span className="announcement-bar__item">Enter Student Pickup Reference Ticket</span>
-        </div>
-      </div>
+
 
       {/* HEADER */}
       <header className="header-wrapper">
@@ -230,12 +217,23 @@ export default function ServingLookup() {
             </span>
             <button
               onClick={() => {
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
+                sessionStorage.removeItem("token");
+                sessionStorage.removeItem("user");
                 router.push("/login");
               }}
-              className="nav-link"
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.15em" }}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: "700",
+                textTransform: "uppercase",
+                letterSpacing: "0.15em",
+                color: "#726a63",
+                transition: "opacity 0.2s"
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
             >
               Sign Out
             </button>
@@ -368,31 +366,17 @@ export default function ServingLookup() {
                 const isCollected = item.status === "COLLECTED";
                 const isRefunded = item.status === "REFUNDED";
 
-                let rowBg = "#ffffff";
-                let rowBorder = "1px solid rgba(114, 106, 99, 0.15)";
-                let rowColor = "#726a63";
-
-                if (isCollected) {
-                  rowBg = "rgba(16, 185, 129, 0.03)";
-                  rowBorder = "1px solid rgba(16, 185, 129, 0.25)";
-                  rowColor = "#10B981";
-                } else if (isRefunded) {
-                  rowBg = "rgba(114, 106, 99, 0.03)";
-                  rowBorder = "1px solid rgba(114, 106, 99, 0.1)";
-                  rowColor = "rgba(114, 106, 99, 0.6)";
-                }
-
                 return (
                   <div
                     key={item.orderItemId}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px", borderRadius: "15px", border: rowBorder, backgroundColor: rowBg, color: rowColor, transition: "all 0.2s" }}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px 0", borderBottom: "1px solid rgba(114, 106, 99, 0.12)", color: "#726a63" }}
                   >
                     <div style={{ flexGrow: 1, paddingRight: "15px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "5px" }}>
-                        <span style={{ fontSize: "14px", fontWeight: "700", textDecoration: (isCollected || isRefunded) ? "line-through" : "none" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+                        <span style={{ fontSize: "14px", fontWeight: "700" }}>
                           {item.dishName}
                         </span>
-                        <span style={{ fontSize: "10px", fontWeight: "700", border: `1px solid ${isCollected ? "rgba(16,185,129,0.3)" : "rgba(114, 106, 99, 0.25)"}`, padding: "2px 8px", borderRadius: "8px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: "700", color: "rgba(114, 106, 99, 0.6)" }}>
                           x{item.quantity}
                         </span>
                       </div>
@@ -403,18 +387,18 @@ export default function ServingLookup() {
 
                     <div>
                       {isCollected ? (
-                        <span style={{ fontSize: "11px", fontWeight: "750", color: "#10B981", backgroundColor: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "8px 15px", borderRadius: "30px" }}>
-                          ✓ Dispensed
+                        <span style={{ fontSize: "12px", fontWeight: "700", color: "#10B981" }}>
+                          Dispensed
                         </span>
                       ) : isRefunded ? (
-                        <span style={{ fontSize: "11px", fontWeight: "700", color: "rgba(114, 106, 99, 0.6)", padding: "8px 15px" }}>
+                        <span style={{ fontSize: "12px", fontWeight: "700", color: "rgba(114, 106, 99, 0.5)" }}>
                           Refunded
                         </span>
                       ) : (
                         <button
                           onClick={() => handleMarkCollected(item.orderItemId)}
                           className="slide-btn"
-                          style={{ padding: "8px 18px", fontSize: "11px", height: "auto" }}
+                          style={{ padding: "6px 14px", fontSize: "11px", height: "auto" }}
                         >
                           Mark Dispensed
                         </button>

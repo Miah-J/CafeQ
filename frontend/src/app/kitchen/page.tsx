@@ -36,7 +36,6 @@ export default function KitchenDisplay() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [currentTime, setCurrentTime] = useState("");
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
   
   const socketRef = useRef<Socket | null>(null);
@@ -44,8 +43,8 @@ export default function KitchenDisplay() {
 
   // Authenticate user check (Admin, KitchenStaff, or ServingStaff)
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
+    const token = sessionStorage.getItem("token");
+    const storedUser = sessionStorage.getItem("user");
 
     if (!token || !storedUser) {
       router.push("/login");
@@ -68,32 +67,14 @@ export default function KitchenDisplay() {
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
     router.push("/login");
   };
 
-  // Live ticking clock
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-        })
-      );
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   // Fetch initial dishes and tickets
   const loadInitialData = async () => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) return;
 
     try {
@@ -176,7 +157,7 @@ export default function KitchenDisplay() {
   }, []);
 
   const fetchTicketsSilently = async () => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) return;
     try {
       const res = await fetch("http://localhost:3001/kitchen/tickets", {
@@ -193,7 +174,7 @@ export default function KitchenDisplay() {
 
   // Adjust Prepared Capacity Portions
   const adjustCapacity = async (dishId: string, currentQty: number, delta: number) => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     const newQty = Math.max(0, currentQty + delta);
     setError("");
 
@@ -215,7 +196,7 @@ export default function KitchenDisplay() {
 
   // Toggle Sold Out Status
   const toggleSoldOut = async (dishId: string, currentSoldOut: boolean) => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     setError("");
 
     try {
@@ -258,19 +239,7 @@ export default function KitchenDisplay() {
   return (
     <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       
-      {/* ANNOUNCEMENT BAR */}
-      <div className="announcement-bar">
-        <div className="announcement-bar__content">
-          <span className="announcement-bar__item">Strathmore University Dining</span>
-          <span className="announcement-bar__item">Live Kitchen Production Monitor</span>
-          <span className="announcement-bar__item">Auto-synced with Counter Handover Requests</span>
-          <span className="announcement-bar__item">Real-time Portions Forecast Data</span>
-          <span className="announcement-bar__item">Strathmore University Dining</span>
-          <span className="announcement-bar__item">Live Kitchen Production Monitor</span>
-          <span className="announcement-bar__item">Auto-synced with Counter Handover Requests</span>
-          <span className="announcement-bar__item">Real-time Portions Forecast Data</span>
-        </div>
-      </div>
+
 
       {/* HEADER */}
       <header className="header-wrapper">
@@ -284,19 +253,6 @@ export default function KitchenDisplay() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "25px" }}>
-            <div style={{ textAlign: "right" }}>
-              <span style={{ fontSize: "9px", textTransform: "uppercase", fontWeight: "700", color: "rgba(114, 106, 99, 0.5)", display: "block" }}>Active Session:</span>
-              <span style={{ display: "block", fontSize: "11px", color: "#b7786b", fontWeight: "700" }}>Lunch · 12:00 PM – 2:00 PM</span>
-            </div>
-
-            <div style={{ height: "30px", width: "1px", backgroundColor: "rgba(114, 106, 99, 0.2)" }}></div>
-
-            <div style={{ textAlign: "right", fontFamily: "monospace" }}>
-              <span style={{ fontSize: "9px", textTransform: "uppercase", fontWeight: "700", color: "rgba(114, 106, 99, 0.5)", display: "block" }}>Live clock:</span>
-              <span style={{ display: "block", fontSize: "14px", color: "#726a63", fontWeight: "700" }}>{currentTime}</span>
-            </div>
-
-            <div style={{ height: "30px", width: "1px", backgroundColor: "rgba(114, 106, 99, 0.2)" }}></div>
 
             <button onClick={handleLogout} className="slide-btn" style={{ padding: "8px 18px", fontSize: "10px" }}>
               Sign Out
@@ -414,9 +370,11 @@ export default function KitchenDisplay() {
           <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px", position: "sticky", top: "130px", maxHeight: "calc(100vh - 200px)", display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(114,106,99,0.1)", paddingBottom: "15px", marginBottom: "20px" }}>
               <h2 style={{ fontSize: "14px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em", color: "#726a63" }}>Incoming Prep Tickets</h2>
-              <span style={{ fontSize: "10px", backgroundColor: "rgba(183, 120, 107, 0.15)", color: "#b7786b", padding: "3px 8px", borderRadius: "5px", fontWeight: "700" }}>
-                {tickets.length} PENDING
-              </span>
+              {tickets.length > 0 && (
+                <span style={{ fontSize: "10px", backgroundColor: "rgba(183, 120, 107, 0.15)", color: "#b7786b", padding: "3px 8px", borderRadius: "5px", fontWeight: "700" }}>
+                  {tickets.length} PENDING
+                </span>
+              )}
             </div>
 
             <div style={{ flexGrow: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "15px", paddingRight: "5px" }}>
@@ -484,7 +442,7 @@ export default function KitchenDisplay() {
                               >
                                 {isChecked && <span style={{ color: "#ffffff", fontSize: "10px", fontWeight: "900" }}>✓</span>}
                               </div>
-                              <span style={{ fontSize: "12px", fontWeight: "700", color: "#726a63", textDecoration: isChecked ? "line-through" : "none" }}>
+                              <span style={{ fontSize: "12px", fontWeight: "700", color: "#726a63" }}>
                                 {item.quantity}x {item.dishName}
                               </span>
                             </div>

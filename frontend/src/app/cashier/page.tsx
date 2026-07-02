@@ -94,8 +94,8 @@ export default function CashierWorkspace() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
+    const token = sessionStorage.getItem("token");
+    const storedUser = sessionStorage.getItem("user");
 
     if (!token || !storedUser) {
       router.push("/login");
@@ -122,15 +122,19 @@ export default function CashierWorkspace() {
         });
 
         if (res.status === 401) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
+          sessionStorage.removeItem("token");
+          sessionStorage.removeItem("user");
           router.push("/login");
           return;
         }
 
-        const data = await res.json();
+        const text = await res.text();
         if (res.ok) {
-          setMenu(data);
+          if (!text || text === "null" || text === "undefined") {
+            setMenu(null);
+          } else {
+            setMenu(JSON.parse(text));
+          }
         }
       } catch {
         // Polling will retry
@@ -157,8 +161,8 @@ export default function CashierWorkspace() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
     router.push("/login");
   };
 
@@ -213,7 +217,7 @@ export default function CashierWorkspace() {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) return;
 
     setStudentLoading(true);
@@ -232,7 +236,7 @@ export default function CashierWorkspace() {
 
   // Place cashier order
   const handlePlaceOrder = async () => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) return;
 
     if (cart.length === 0) {
@@ -361,20 +365,6 @@ export default function CashierWorkspace() {
   return (
     <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       
-      {/* ANNOUNCEMENT BAR (MARQUEE) */}
-      <div className="announcement-bar">
-        <div className="announcement-bar__content">
-          <span className="announcement-bar__item">Strathmore University Dining</span>
-          <span className="announcement-bar__item">Cashier Counter Terminal</span>
-          <span className="announcement-bar__item">CASH and M-Pesa Split Payments Enabled</span>
-          <span className="announcement-bar__item">Instant pickup reference creation</span>
-          {/* Repeated for marquee loop */}
-          <span className="announcement-bar__item">Strathmore University Dining</span>
-          <span className="announcement-bar__item">Cashier Counter Terminal</span>
-          <span className="announcement-bar__item">CASH and M-Pesa Split Payments Enabled</span>
-          <span className="announcement-bar__item">Instant pickup reference creation</span>
-        </div>
-      </div>
 
       {/* HEADER */}
       <header className="header-wrapper">
@@ -393,7 +383,22 @@ export default function CashierWorkspace() {
                 Logged in as: <span style={{ color: "#b7786b" }}>{user.fullName}</span> ({user.role})
               </span>
             )}
-            <button onClick={handleLogout} className="nav-link" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: "700",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                color: "#726a63",
+                transition: "opacity 0.2s"
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+            >
               Sign Out
             </button>
           </div>
@@ -649,7 +654,7 @@ export default function CashierWorkspace() {
                       color: studentLookup.found ? "#10B981" : "#DC2626"
                     }}>
                       {studentLookup.found
-                        ? `✓ ${studentLookup.fullName} (${studentLookup.studentNumber})`
+                        ? `${studentLookup.fullName} (${studentLookup.studentNumber})`
                         : "✕ Student not found in system. Walk-in cashier order."}
                     </div>
                   )}

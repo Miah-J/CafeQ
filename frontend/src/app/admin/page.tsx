@@ -8,7 +8,11 @@ import {
   UtensilsCrossed, 
   TrendingUp, 
   Award, 
-  UserPlus 
+  UserPlus,
+  Download,
+  RefreshCw,
+  CheckCircle,
+  X
 } from "lucide-react";
 
 interface Dish {
@@ -71,13 +75,19 @@ export default function AdminDashboard() {
   // Analytics and Loyalty Stats Data
   const [revenueStats, setRevenueStats] = useState<{ totalRevenue: number; salesByDish: Array<{ dishName: string; sales: number }> } | null>(null);
   const [orderStats, setOrderStats] = useState<{ totalPlaced: number; totalCollected: number; collectionRate: number } | null>(null);
-  const [dishDemand, setDishDemand] = useState<Array<{ dishId: string; name: string; forecastedQty: number; preparedQty: number; confirmedQty: number; remainingQty: number; collectionRate: number }>>([]);
   const [lowStockAlerts, setLowStockAlerts] = useState<Array<{ dishId: string; name: string; preparedQuantity: number; remainingQuantity: number; lowStockAt: string | null; soldOutAt: string | null; isSoldOut: boolean }>>([]);
   const [loyaltyStats, setLoyaltyStats] = useState<{ totalPointsIssued: number; totalPointsRedeemed: number; activeAccountsCount: number; frozenAccountsCount: number; eligibleAccountsCount: number } | null>(null);
 
+  // Reports Tab Data
+  const [orderRecords, setOrderRecords] = useState<any[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+  const [refundProcessing, setRefundProcessing] = useState(false);
+  const [refundResult, setRefundResult] = useState<{ processedOrdersCount: number; refundedItemsCount: number; totalRefundedAmount: number } | null>(null);
+  const [refundingOrderId, setRefundingOrderId] = useState<string | null>(null);
+
   // Data Fetchers
   const fetchAllMenus = async () => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) return;
     try {
       const res = await fetch("http://localhost:3001/menus", {
@@ -95,7 +105,7 @@ export default function AdminDashboard() {
   };
 
   const fetchRevenueStats = async () => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) return;
     try {
       const res = await fetch("http://localhost:3001/analytics/revenue", {
@@ -111,7 +121,7 @@ export default function AdminDashboard() {
   };
 
   const fetchOrderStats = async () => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) return;
     try {
       const res = await fetch("http://localhost:3001/analytics/orders", {
@@ -126,24 +136,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchDishDemand = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    try {
-      const res = await fetch("http://localhost:3001/analytics/dish-demand", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDishDemand(data.dishes || []);
-      }
-    } catch (err) {
-      console.error("Failed to fetch dish demand:", err);
-    }
-  };
-
   const fetchLowStockAlerts = async () => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) return;
     try {
       const res = await fetch("http://localhost:3001/analytics/low-stock", {
@@ -159,7 +153,7 @@ export default function AdminDashboard() {
   };
 
   const fetchLoyaltyStats = async () => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) return;
     try {
       const res = await fetch("http://localhost:3001/loyalty/admin/stats", {
@@ -174,32 +168,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleApplyForecast = async (dishId: string, recommendedQty: number) => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    setError("");
-    setSuccess("");
-    try {
-      const res = await fetch(`http://localhost:3001/menus/dishes/${dishId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ preparedQuantity: recommendedQty }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to adjust prepared quantity.");
-      setSuccess(`Adjusted prepared portions to ${recommendedQty} successfully!`);
-      void fetchDishDemand();
-      void fetchAllMenus();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
   const handleExportCsv = async () => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) return;
     try {
       const res = await fetch("http://localhost:3001/analytics/export-csv", {
@@ -223,10 +193,79 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchOrderRecords = async () => {
+    const token = sessionStorage.getItem("token");
+    if (!token) return;
+    setRecordsLoading(true);
+    try {
+      const res = await fetch("http://localhost:3001/analytics/records", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrderRecords(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch order records:", err);
+    } finally {
+      setRecordsLoading(false);
+    }
+  };
+
+  const handleTriggerRefund = async () => {
+    const token = sessionStorage.getItem("token");
+    if (!token) return;
+    setRefundProcessing(true);
+    setRefundResult(null);
+    try {
+      const res = await fetch("http://localhost:3001/refund/trigger", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRefundResult(data.stats);
+        setSuccess(`Refund complete: ${data.stats.processedOrdersCount} orders processed, KES ${data.stats.totalRefundedAmount} refunded to wallets.`);
+        void fetchOrderRecords();
+      } else {
+        const errData = await res.json().catch(() => null);
+        setError(errData?.message || "Failed to process refunds.");
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setRefundProcessing(false);
+    }
+  };
+
+  const handleRefundSingleOrder = async (orderId: string) => {
+    const token = sessionStorage.getItem("token");
+    if (!token) return;
+    setRefundingOrderId(orderId);
+    try {
+      const res = await fetch(`http://localhost:3001/refund/order/${orderId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSuccess(`Refunded ${data.stats.refundedItemsCount} item(s), KES ${data.stats.totalRefundedAmount} credited to wallet.`);
+        void fetchOrderRecords();
+      } else {
+        const errData = await res.json().catch(() => null);
+        setError(errData?.message || "Failed to refund this order.");
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setRefundingOrderId(null);
+    }
+  };
+
   // Role Guard validation & Data Polling
   useEffect(() => {
-    const userStr = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
+    const userStr = sessionStorage.getItem("user");
+    const token = sessionStorage.getItem("token");
     if (!userStr || !token) {
       router.push("/login");
       return;
@@ -247,9 +286,9 @@ export default function AdminDashboard() {
           void fetchAllMenus();
           void fetchRevenueStats();
           void fetchOrderStats();
-          void fetchDishDemand();
           void fetchLowStockAlerts();
           void fetchLoyaltyStats();
+          void fetchOrderRecords();
         };
         
         loadAll();
@@ -262,8 +301,8 @@ export default function AdminDashboard() {
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
     router.push("/login");
   };
 
@@ -274,7 +313,7 @@ export default function AdminDashboard() {
     setError("");
     setSuccess("");
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     try {
       const res = await fetch("http://localhost:3001/menus", {
         method: "POST",
@@ -299,7 +338,7 @@ export default function AdminDashboard() {
     setError("");
     setSuccess("");
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     try {
       const res = await fetch(`http://localhost:3001/menus/${menuId}`, {
         method: "PATCH",
@@ -325,7 +364,7 @@ export default function AdminDashboard() {
     setError("");
     setSuccess("");
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     try {
       const res = await fetch(`http://localhost:3001/menus/${menuId}`, {
         method: "DELETE",
@@ -344,7 +383,7 @@ export default function AdminDashboard() {
     setError("");
     setSuccess("");
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     try {
       const res = await fetch(`http://localhost:3001/menus/${menuId}/publish`, {
         method: "POST",
@@ -353,6 +392,25 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to publish menu.");
       setSuccess("Menu published successfully! It is now the active daily menu.");
+      void fetchAllMenus();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleUnpublishMenu = async (menuId: string) => {
+    setError("");
+    setSuccess("");
+
+    const token = sessionStorage.getItem("token");
+    try {
+      const res = await fetch(`http://localhost:3001/menus/${menuId}/unpublish`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to end menu.");
+      setSuccess("Menu ended successfully! It is no longer active.");
       void fetchAllMenus();
     } catch (err: any) {
       setError(err.message);
@@ -392,7 +450,7 @@ export default function AdminDashboard() {
     if (!file) return;
 
     setUploadingImage(true);
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     const formData = new FormData();
     formData.append("image", file);
 
@@ -419,7 +477,7 @@ export default function AdminDashboard() {
     setError("");
     setSuccess("");
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     const payload = {
       name: dishName,
       description: dishDescription || undefined,
@@ -467,7 +525,7 @@ export default function AdminDashboard() {
     setError("");
     setSuccess("");
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     try {
       const res = await fetch(`http://localhost:3001/menus/dishes/${dishId}`, {
         method: "DELETE",
@@ -486,7 +544,7 @@ export default function AdminDashboard() {
     setError("");
     setSuccess("");
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     try {
       const res = await fetch(`http://localhost:3001/menus/dishes/${dishId}/sold-out`, {
         method: "PATCH",
@@ -516,7 +574,7 @@ export default function AdminDashboard() {
     setSuccess("");
     setProvisionLoading(true);
 
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     try {
       const payload: Record<string, string | undefined> = {
         email,
@@ -573,20 +631,7 @@ export default function AdminDashboard() {
   return (
     <div style={{ backgroundColor: "#f8f7f6", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       
-      {/* ANNOUNCEMENT BAR (MARQUEE) */}
-      <div className="announcement-bar">
-        <div className="announcement-bar__content">
-          <span className="announcement-bar__item">Strathmore University Dining</span>
-          <span className="announcement-bar__item">CaféQ System Administrator Portal</span>
-          <span className="announcement-bar__item">Predictive Demand Forecast Optimization</span>
-          <span className="announcement-bar__item">Provision Staff Credentials & Daily Menus</span>
-          {/* Repeated for marquee loop */}
-          <span className="announcement-bar__item">Strathmore University Dining</span>
-          <span className="announcement-bar__item">CaféQ System Administrator Portal</span>
-          <span className="announcement-bar__item">Predictive Demand Forecast Optimization</span>
-          <span className="announcement-bar__item">Provision Staff Credentials & Daily Menus</span>
-        </div>
-      </div>
+
 
       {/* HEADER */}
       <header className="header-wrapper">
@@ -600,7 +645,22 @@ export default function AdminDashboard() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "25px" }}>
-            <button onClick={handleLogout} className="nav-link" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: "700",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                color: "#726a63",
+                transition: "opacity 0.2s"
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+            >
               Sign Out
             </button>
           </div>
@@ -618,7 +678,7 @@ export default function AdminDashboard() {
             {[
               { id: "overview", label: "Overview", icon: <LayoutDashboard size={15} strokeWidth={2.2} /> },
               { id: "menus", label: "Menu Manager", icon: <UtensilsCrossed size={15} strokeWidth={2.2} /> },
-              { id: "reports", label: "Reports & Forecasts", icon: <TrendingUp size={15} strokeWidth={2.2} /> },
+              { id: "reports", label: "Reports", icon: <TrendingUp size={15} strokeWidth={2.2} /> },
               { id: "loyalty", label: "Loyalty Program", icon: <Award size={15} strokeWidth={2.2} /> },
               { id: "staff", label: "Provision Staff", icon: <UserPlus size={15} strokeWidth={2.2} /> }
             ].map((tab) => {
@@ -655,13 +715,6 @@ export default function AdminDashboard() {
             })}
           </div>
 
-          <div style={{ marginTop: "auto", borderTop: "1px solid rgba(114,106,99,0.08)", paddingTop: "25px" }}>
-            <span style={{ display: "block", fontSize: "9px", fontWeight: "700", textTransform: "uppercase", color: "rgba(114,106,99,0.4)", marginBottom: "6px" }}>Strathmore Campus</span>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#10B981" }}></span>
-              <span style={{ fontSize: "11px", fontWeight: "700", color: "#726a63" }}>System Active</span>
-            </div>
-          </div>
         </aside>
 
         {/* MAIN WORKSPACE */}
@@ -717,184 +770,159 @@ export default function AdminDashboard() {
                 <span style={{ fontSize: "9px", color: "rgba(114, 106, 99, 0.6)", marginTop: "5px" }}>Target: &gt;95% collection</span>
               </div>
             </div>
+            {/* Live Stock Alerts */}
+            <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px", marginTop: "30px" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63", borderBottom: "1px solid rgba(114,106,99,0.15)", paddingBottom: "12px", marginBottom: "20px" }}>
+                Live Stock Alerts
+              </h3>
 
-            {/* Split layout: Preparation Recommendations & Live Low Stock Alerts */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "30px" }} className="grid lg:grid-cols-3">
-              
-              {/* Left/Center: Demand Forecasting recommendations */}
-              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px" }} className="lg:col-span-2">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(114,106,99,0.15)", paddingBottom: "12px", marginBottom: "20px" }}>
-                  <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63" }}>
-                    Preparation Recommendations (FastAPI Demand Forecast Model)
-                  </h3>
-                  <span style={{ fontSize: "8px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "rgba(183, 120, 107, 0.08)", border: "1px solid rgba(183, 120, 107, 0.2)", padding: "4px 10px", borderRadius: "5px", color: "#b7786b" }}>
-                    ML-Powered
-                  </span>
+              {lowStockAlerts.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px 0", fontSize: "12px", color: "rgba(114, 106, 99, 0.6)", fontStyle: "italic" }}>
+                  ✓ All active menu portions are healthy.
                 </div>
-                
-                {dishDemand.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "40px 0", fontSize: "12px", color: "rgba(114, 106, 99, 0.6)", fontStyle: "italic" }}>
-                    No active daily menu found. Publish a menu to view forecasting recommendations.
-                  </div>
-                ) : (
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", color: "#726a63", textAlign: "left" }}>
-                      <thead>
-                        <tr style={{ borderBottom: "1px solid rgba(114, 106, 99, 0.15)", textTransform: "uppercase", fontSize: "9px", fontWeight: "700", color: "rgba(114, 106, 99, 0.5)" }}>
-                          <th style={{ padding: "12px 10px" }}>Dish Name</th>
-                          <th style={{ padding: "12px 10px", textAlign: "center" }}>Current Prep Qty</th>
-                          <th style={{ padding: "12px 10px", textAlign: "center", color: "#b7786b" }}>Model Forecast</th>
-                          <th style={{ padding: "12px 10px", textAlign: "right" }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dishDemand.map((dish) => (
-                          <tr key={dish.dishId} style={{ borderBottom: "1px solid rgba(114, 106, 99, 0.08)" }}>
-                            <td style={{ padding: "16px 10px", fontWeight: "700", color: "#726a63" }}>{dish.name}</td>
-                            <td style={{ padding: "16px 10px", textAlign: "center" }}>{dish.preparedQty} portions</td>
-                            <td style={{ padding: "16px 10px", textAlign: "center", color: "#b7786b", fontWeight: "900" }}>{dish.forecastedQty} portions</td>
-                            <td style={{ padding: "16px 10px", textAlign: "right" }}>
-                              {dish.preparedQty === dish.forecastedQty ? (
-                                <span style={{ fontSize: "10px", color: "#10B981", backgroundColor: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "4px 10px", borderRadius: "30px", fontWeight: "700" }}>
-                                  ✓ Aligned
-                                </span>
-                              ) : (
-                                <button
-                                  onClick={() => handleApplyForecast(dish.dishId, dish.forecastedQty)}
-                                  className="slide-btn"
-                                  style={{ padding: "6px 15px", fontSize: "10px", height: "auto" }}
-                                >
-                                  Apply Forecast
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* Right: Live Low-Stock Notifications */}
-              <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px" }} className="lg:col-span-1">
-                <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63", borderBottom: "1px solid rgba(114,106,99,0.15)", paddingBottom: "12px", marginBottom: "20px" }}>
-                  Live Stock Alerts
-                </h3>
-
-                {lowStockAlerts.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "40px 0", fontSize: "12px", color: "rgba(114, 106, 99, 0.6)", fontStyle: "italic" }}>
-                    ✓ All active menu portions are healthy.
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "15px", maxHeight: "400px", overflowY: "auto" }}>
-                    {lowStockAlerts.map((alert) => {
-                      const isSoldOut = alert.remainingQuantity === 0 || alert.isSoldOut;
-                      return (
-                        <div key={alert.dishId} style={{
-                          borderRadius: "15px",
-                          border: isSoldOut ? "1px solid rgba(220,38,38,0.2)" : "1px solid rgba(196,128,0,0.2)",
-                          backgroundColor: isSoldOut ? "rgba(220,38,38,0.03)" : "rgba(196,128,0,0.03)",
-                          padding: "15px",
-                          fontSize: "12px"
-                        }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                            <span style={{ fontWeight: "700", color: "#726a63" }}>{alert.name}</span>
-                            <span style={{ fontSize: "8px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: isSoldOut ? "#DC2626" : "#C48000", color: "#ffffff", padding: "2px 6px", borderRadius: "5px" }}>
-                              {isSoldOut ? 'Sold Out' : 'Low Stock'}
-                            </span>
-                          </div>
-
-                          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", marginTop: "10px" }}>
-                            <span>Prepared: {alert.preparedQuantity}</span>
-                            <span style={{ color: isSoldOut ? '#DC2626' : '#C48000' }}>Remaining: {alert.remainingQuantity}</span>
-                          </div>
-
-                          <div style={{ marginTop: "10px", fontSize: "9px", color: "rgba(114, 106, 99, 0.5)", borderTop: "1px solid rgba(114, 106, 99, 0.08)", paddingTop: "8px", display: "flex", justifyContent: "space-between" }}>
-                            <span>Triggered:</span>
-                            <span>
-                              {isSoldOut 
-                                ? alert.soldOutAt ? new Date(alert.soldOutAt).toLocaleTimeString() : 'Just now'
-                                : alert.lowStockAt ? new Date(alert.lowStockAt).toLocaleTimeString() : 'Just now'}
-                            </span>
-                          </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "15px", maxHeight: "400px", overflowY: "auto" }}>
+                  {lowStockAlerts.map((alert) => {
+                    const isSoldOut = alert.remainingQuantity === 0 || alert.isSoldOut;
+                    return (
+                      <div key={alert.dishId} style={{
+                        borderRadius: "15px",
+                        border: isSoldOut ? "1px solid rgba(220,38,38,0.2)" : "1px solid rgba(196,128,0,0.2)",
+                        backgroundColor: isSoldOut ? "rgba(220,38,38,0.03)" : "rgba(196,128,0,0.03)",
+                        padding: "15px",
+                        fontSize: "12px"
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                          <span style={{ fontWeight: "700", color: "#726a63" }}>{alert.name}</span>
+                          <span style={{ fontSize: "8px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: isSoldOut ? "#DC2626" : "#C48000", color: "#ffffff", padding: "2px 6px", borderRadius: "5px" }}>
+                            {isSoldOut ? 'Sold Out' : 'Low Stock'}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+
+                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", marginTop: "10px" }}>
+                          <span>Prepared: {alert.preparedQuantity}</span>
+                          <span style={{ color: isSoldOut ? '#DC2626' : '#C48000' }}>Remaining: {alert.remainingQuantity}</span>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* TAB: REPORTS */}
         {activeTab === "reports" && (
-          <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px" }}>
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(114,106,99,0.15)", paddingBottom: "15px", marginBottom: "20px", gap: "15px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+            {/* Action Bar */}
+            <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", padding: "25px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "15px" }}>
               <div>
-                <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63" }}>
-                  Dish Demand Comparison & Analytics
-                </h3>
-                <p style={{ fontSize: "11px", color: "rgba(114, 106, 99, 0.6)", marginTop: "4px" }}>
-                  Compare forecasted, prepared, and confirmed orders to optimize waste and collection rates.
-                </p>
+                <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#3b3531", fontFamily: "var(--font-heading)", margin: 0 }}>Order Records & Reports</h3>
+                <p style={{ fontSize: "11px", color: "rgba(114, 106, 99, 0.6)", marginTop: "4px" }}>View all transaction records, download reports, or process refunds for uncollected orders.</p>
               </div>
-              <button onClick={handleExportCsv} className="slide-btn" style={{ padding: "8px 18px", fontSize: "11px", height: "auto" }}>
-                📥 Export Orders & Revenue CSV
-              </button>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button onClick={handleExportCsv} className="slide-btn" style={{ padding: "10px 20px", fontSize: "11px", height: "auto", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Download size={14} /> Download CSV Report
+                </button>
+                <button
+                  onClick={handleTriggerRefund}
+                  disabled={refundProcessing}
+                  className="slide-btn"
+                  style={{ padding: "10px 20px", fontSize: "11px", height: "auto", display: "flex", alignItems: "center", gap: "6px", backgroundColor: refundProcessing ? "rgba(114,106,99,0.3)" : "#636e52", cursor: refundProcessing ? "wait" : "pointer" }}
+                >
+                  <RefreshCw size={14} className={refundProcessing ? "animate-spin" : ""} /> {refundProcessing ? "Processing..." : "Process Refunds"}
+                </button>
+              </div>
             </div>
 
-            {dishDemand.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 0", fontSize: "12px", color: "rgba(114, 106, 99, 0.6)", fontStyle: "italic" }}>
-                No active menu found. Publish a daily menu to inspect historical and live metrics.
-              </div>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", color: "#726a63", textAlign: "left" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(114, 106, 99, 0.15)", textTransform: "uppercase", fontSize: "9px", fontWeight: "700", color: "rgba(114, 106, 99, 0.5)" }}>
-                      <th style={{ padding: "12px 10px" }}>Dish Name</th>
-                      <th style={{ padding: "12px 10px", textAlign: "center" }}>Forecasted Qty</th>
-                      <th style={{ padding: "12px 10px", textAlign: "center" }}>Prepared Qty</th>
-                      <th style={{ padding: "12px 10px", textAlign: "center" }}>Confirmed Orders</th>
-                      <th style={{ padding: "12px 10px", textAlign: "center" }}>Remaining Portions</th>
-                      <th style={{ padding: "12px 10px", textAlign: "center" }}>Ratio (Ordered/Prep)</th>
-                      <th style={{ padding: "12px 10px", textAlign: "right" }}>Collection Rate</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dishDemand.map((dish) => {
-                      const ratio = dish.preparedQty > 0 ? (dish.confirmedQty / dish.preparedQty) * 100 : 0;
-                      const isHighDemand = ratio >= 80;
-                      return (
-                        <tr key={dish.dishId} style={{ borderBottom: "1px solid rgba(114, 106, 99, 0.08)", backgroundColor: isHighDemand ? "rgba(183,120,107,0.02)" : "transparent" }}>
-                          <td style={{ padding: "14px 10px", fontWeight: "700", color: "#726a63" }}>{dish.name}</td>
-                          <td style={{ padding: "14px 10px", textAlign: "center" }}>{dish.forecastedQty}</td>
-                          <td style={{ padding: "14px 10px", textAlign: "center" }}>{dish.preparedQty}</td>
-                          <td style={{ padding: "14px 10px", textAlign: "center", fontWeight: "700", color: "#726a63" }}>{dish.confirmedQty}</td>
-                          <td style={{ padding: "14px 10px", textAlign: "center" }}>{dish.remainingQty}</td>
-                          <td style={{ padding: "14px 10px", textAlign: "center" }}>
-                            <span style={{
-                              fontSize: "9px",
-                              fontWeight: "750",
-                              backgroundColor: isHighDemand ? "rgba(183, 120, 107, 0.08)" : "rgba(114, 106, 99, 0.06)",
-                              border: isHighDemand ? "1px solid rgba(183, 120, 107, 0.2)" : "1px solid rgba(114, 106, 99, 0.1)",
-                              color: isHighDemand ? "#b7786b" : "#726a63",
-                              padding: "2px 8px",
-                              borderRadius: "10px"
-                            }}>
-                              {ratio.toFixed(1)}%
-                            </span>
-                          </td>
-                          <td style={{ padding: "14px 10px", textAlign: "right", color: "#10B981", fontWeight: "700" }}>{dish.collectionRate}%</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            {/* Refund Result Banner */}
+            {refundResult && (
+              <div style={{ backgroundColor: "rgba(16, 185, 129, 0.06)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "15px", padding: "18px 25px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                <span style={{ fontSize: "12px", fontWeight: "700", color: "#10B981", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <CheckCircle size={15} /> Refund Job Completed
+                </span>
+                <div style={{ display: "flex", gap: "20px", fontSize: "11px", color: "rgba(114,106,99,0.8)" }}>
+                  <span>Orders Processed: <strong>{refundResult.processedOrdersCount}</strong></span>
+                  <span>Items Refunded: <strong>{refundResult.refundedItemsCount}</strong></span>
+                  <span>Total Refunded: <strong style={{ color: "#10B981" }}>KES {refundResult.totalRefundedAmount.toLocaleString()}</strong></span>
+                </div>
+                <button onClick={() => setRefundResult(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", color: "rgba(114,106,99,0.4)" }}>
+                  <X size={16} />
+                </button>
               </div>
             )}
+
+            {/* Order Records Table */}
+            <div style={{ backgroundColor: "#ffffff", border: "1px solid rgba(114, 106, 99, 0.15)", borderRadius: "20px", overflow: "hidden" }}>
+              {recordsLoading ? (
+                <div style={{ textAlign: "center", padding: "60px 20px" }}>
+                  <div style={{ border: "3px solid #b7786b", borderTopColor: "transparent", borderRadius: "50%", width: "30px", height: "30px", animation: "spin 1s linear infinite", margin: "0 auto 15px" }}></div>
+                  <p style={{ fontSize: "12px", color: "rgba(114, 106, 99, 0.7)", fontWeight: "600" }}>Loading records...</p>
+                </div>
+              ) : orderRecords.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 20px", color: "rgba(114, 106, 99, 0.6)", fontSize: "13px" }}>
+                  No order records found.
+                </div>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", fontFamily: "'Libre Franklin', sans-serif" }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#faf9f7", borderBottom: "1px solid rgba(114,106,99,0.12)" }}>
+                        <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114,106,99,0.5)" }}>Order ID</th>
+                        <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114,106,99,0.5)" }}>Status</th>
+                        <th style={{ padding: "14px 18px", textAlign: "right", fontWeight: "700", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114,106,99,0.5)" }}>Amount</th>
+                        <th style={{ padding: "14px 18px", textAlign: "center", fontWeight: "700", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114,106,99,0.5)" }}>Points</th>
+                        <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114,106,99,0.5)" }}>Method</th>
+                        <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114,106,99,0.5)" }}>Reference</th>
+                        <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114,106,99,0.5)" }}>Date</th>
+                        <th style={{ padding: "14px 18px", textAlign: "center", fontWeight: "700", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(114,106,99,0.5)" }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orderRecords.map((rec) => {
+                        const statusColor = rec.status === "COLLECTED" ? "#10B981" : rec.status === "REFUNDED" ? "#DC2626" : rec.status === "CONFIRMED" || rec.status === "PARTIALLY_COLLECTED" ? "#C48000" : "rgba(114,106,99,0.7)";
+                        const statusBg = rec.status === "COLLECTED" ? "rgba(16,185,129,0.08)" : rec.status === "REFUNDED" ? "rgba(220,38,38,0.08)" : rec.status === "CONFIRMED" || rec.status === "PARTIALLY_COLLECTED" ? "rgba(196,128,0,0.08)" : "rgba(114,106,99,0.06)";
+                        return (
+                          <tr key={rec.orderId} style={{ borderBottom: "1px solid rgba(114,106,99,0.06)" }}>
+                            <td style={{ padding: "14px 18px", fontWeight: "600", color: "#726a63", fontFamily: "monospace", fontSize: "10px" }}>{rec.orderId.substring(0, 8)}...</td>
+                            <td style={{ padding: "14px 18px" }}>
+                              <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: statusBg, padding: "3px 10px", borderRadius: "10px", color: statusColor }}>{rec.status}</span>
+                            </td>
+                            <td style={{ padding: "14px 18px", textAlign: "right", fontWeight: "700", color: "#726a63" }}>KES {rec.totalAmount.toLocaleString()}</td>
+                            <td style={{ padding: "14px 18px", textAlign: "center", color: rec.pointsRedeemed > 0 ? "#b7786b" : "rgba(114,106,99,0.4)" }}>{rec.pointsRedeemed > 0 ? rec.pointsRedeemed : "—"}</td>
+                            <td style={{ padding: "14px 18px", color: "rgba(114,106,99,0.7)" }}>{rec.paymentMethod}</td>
+                            <td style={{ padding: "14px 18px", color: "rgba(114,106,99,0.5)", fontFamily: "monospace", fontSize: "10px" }}>{rec.transactionReference.length > 20 ? rec.transactionReference.substring(0, 20) + "..." : rec.transactionReference}</td>
+                            <td style={{ padding: "14px 18px", color: "rgba(114,106,99,0.5)", whiteSpace: "nowrap" }}>{new Date(rec.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}</td>
+                            <td style={{ padding: "14px 18px", textAlign: "center" }}>
+                              {(rec.status === "PENDING" || rec.status === "CONFIRMED" || rec.status === "PARTIALLY_COLLECTED") ? (
+                                <button
+                                  onClick={() => handleRefundSingleOrder(rec.orderId)}
+                                  disabled={refundingOrderId === rec.orderId}
+                                  style={{
+                                    padding: "4px 12px", fontSize: "9px", fontWeight: "700", textTransform: "uppercase",
+                                    letterSpacing: "0.05em", border: "1px solid #DC2626", borderRadius: "8px",
+                                    backgroundColor: refundingOrderId === rec.orderId ? "rgba(220,38,38,0.1)" : "transparent",
+                                    color: "#DC2626", cursor: refundingOrderId === rec.orderId ? "wait" : "pointer",
+                                    transition: "all 0.2s"
+                                  }}
+                                >
+                                  {refundingOrderId === rec.orderId ? "Refunding..." : "Refund"}
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: "9px", color: "rgba(114,106,99,0.3)" }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1063,9 +1091,18 @@ export default function AdminDashboard() {
 
                       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                         {menu.isActive ? (
-                          <span style={{ fontSize: "9px", fontWeight: "750", textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "4px 12px", borderRadius: "30px", color: "#10B981" }}>
-                            Active Menu
-                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <span style={{ fontSize: "9px", fontWeight: "750", textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "4px 12px", borderRadius: "30px", color: "#10B981" }}>
+                              Active Menu
+                            </span>
+                            <button
+                              onClick={() => handleUnpublishMenu(menu.id)}
+                              className="slide-btn"
+                              style={{ padding: "6px 15px", fontSize: "10px", height: "auto", backgroundColor: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#DC2626", boxShadow: "none" }}
+                            >
+                              End Menu
+                            </button>
+                          </div>
                         ) : (
                           <>
                             <span style={{ fontSize: "9px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.08em", backgroundColor: "rgba(114, 106, 99, 0.08)", border: "1px solid rgba(114, 106, 99, 0.15)", padding: "4px 12px", borderRadius: "30px", color: "rgba(114, 106, 99, 0.7)" }}>
