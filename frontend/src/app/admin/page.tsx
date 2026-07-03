@@ -300,6 +300,17 @@ export default function AdminDashboard() {
     }
   }, [router]);
 
+  // Load tab from URL query parameter if present (e.g. for routing from Analytics page)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab && ["overview", "menus", "reports", "loyalty", "staff"].includes(tab)) {
+        setActiveTab(tab as any);
+      }
+    }
+  }, []);
+
   const handleLogout = () => {
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("user");
@@ -678,38 +689,57 @@ export default function AdminDashboard() {
             {[
               { id: "overview", label: "Overview", icon: <LayoutDashboard size={15} strokeWidth={2.2} /> },
               { id: "menus", label: "Menu Manager", icon: <UtensilsCrossed size={15} strokeWidth={2.2} /> },
+              { id: "analytics", label: "Analytics", icon: <TrendingUp size={15} strokeWidth={2.2} />, href: "/admin/analytics" },
               { id: "reports", label: "Reports", icon: <TrendingUp size={15} strokeWidth={2.2} /> },
               { id: "loyalty", label: "Loyalty Program", icon: <Award size={15} strokeWidth={2.2} /> },
               { id: "staff", label: "Provision Staff", icon: <UserPlus size={15} strokeWidth={2.2} /> }
             ].map((tab) => {
               const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  style={{
-                    background: active ? "rgba(183, 120, 107, 0.08)" : "none",
-                    border: "none",
-                    borderLeft: active ? "3px solid #b7786b" : "3px solid transparent",
-                    padding: "12px 15px",
-                    textAlign: "left",
-                    fontSize: "11px",
-                    fontWeight: "700",
-                    color: active ? "#b7786b" : "#726a63",
-                    cursor: "pointer",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    borderRadius: "0 6px 6px 0",
-                    transition: "all 0.2s",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px"
-                  }}
-                >
+              const linkStyle: React.CSSProperties = {
+                background: active ? "rgba(183, 120, 107, 0.08)" : "none",
+                border: "none",
+                borderLeft: active ? "3px solid #b7786b" : "3px solid transparent",
+                padding: "12px 15px",
+                textAlign: "left",
+                fontSize: "11px",
+                fontWeight: "700",
+                color: active ? "#b7786b" : "#726a63",
+                cursor: "pointer",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                borderRadius: "0 6px 6px 0",
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                width: "100%",
+                textDecoration: "none"
+              };
+
+              const innerContent = (
+                <>
                   <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: active ? "#b7786b" : "rgba(114, 106, 99, 0.6)" }}>
                     {tab.icon}
                   </span>
                   <span>{tab.label}</span>
+                </>
+              );
+
+              if ('href' in tab && tab.href) {
+                return (
+                  <Link href={tab.href} key={tab.id} style={linkStyle}>
+                    {innerContent}
+                  </Link>
+                );
+              }
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  style={linkStyle}
+                >
+                  {innerContent}
                 </button>
               );
             })}

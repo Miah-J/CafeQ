@@ -76,3 +76,34 @@ FOR EACH ROW EXECUTE FUNCTION audit_log_trigger_func();
 -- Add points_redeemed column to orders
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS points_redeemed INTEGER DEFAULT 0;
 
+-- Add category column to dishes
+ALTER TABLE dishes ADD COLUMN IF NOT EXISTS category VARCHAR(50) DEFAULT 'Meals';
+
+-- Add failure_reason column to payments
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS failure_reason VARCHAR(255);
+
+-- Update existing dishes to assign some category data for analytics variety
+UPDATE dishes SET category = 'Beverages' WHERE name ILIKE '%tea%' OR name ILIKE '%coffee%' OR name ILIKE '%soda%' OR name ILIKE '%juice%' OR name ILIKE '%drink%' OR name ILIKE '%water%';
+UPDATE dishes SET category = 'Snacks' WHERE name ILIKE '%samosa%' OR name ILIKE '%fruit%' OR name ILIKE '%mandazi%' OR name ILIKE '%chapati%' OR name ILIKE '%salad%';
+
+-- Create academic_events table
+CREATE TABLE IF NOT EXISTS academic_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    event_type VARCHAR(50) NOT NULL, -- EXAM_WEEK, SEMESTER_BREAK
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed initial ranges for testing correlation
+INSERT INTO academic_events (name, event_type, start_date, end_date)
+SELECT 'Semester Break', 'SEMESTER_BREAK', '2026-06-15', '2026-06-22'
+WHERE NOT EXISTS (SELECT 1 FROM academic_events WHERE name = 'Semester Break');
+
+INSERT INTO academic_events (name, event_type, start_date, end_date)
+SELECT 'Exam Week', 'EXAM_WEEK', '2026-06-25', '2026-07-02'
+WHERE NOT EXISTS (SELECT 1 FROM academic_events WHERE name = 'Exam Week');
+
+
+

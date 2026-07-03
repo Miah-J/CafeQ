@@ -7,6 +7,7 @@ import { Dish } from '../menus/entities/dish.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Menu } from '../menus/entities/menu.entity';
 import { DbModule } from '../db/db.module';
+import { AnalyticsService } from './analytics.service';
 
 @Module({
   imports: [
@@ -14,5 +15,7 @@ import { DbModule } from '../db/db.module';
     DbModule,
   ],
   controllers: [AnalyticsController],
+  providers: [AnalyticsService],
 })
 export class AnalyticsModule {}
+
