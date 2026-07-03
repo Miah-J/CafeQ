@@ -599,7 +599,7 @@ export default function CashierWorkspace() {
                   <div style={{ textAlign: "center", padding: "20px 0" }}>
                     <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 15px", fontSize: "20px", fontWeight: "700" }}>✕</div>
                     <h3 style={{ fontSize: "14px", fontWeight: "700", color: "#726a63" }}>
-                      {mpesaPollStatus === "TIMEOUT" ? "Split Payment Timeout" : "Split Payment Failed"}
+                      {mpesaPollStatus === "TIMEOUT" ? "M-Pesa Payment Timeout" : "M-Pesa Payment Failed"}
                     </h3>
                     <p style={{ fontSize: "12px", color: "rgba(114, 106, 99, 0.7)", margin: "10px 0 25px" }}>Safaricom transaction failed or rejected.</p>
                     <button
