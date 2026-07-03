@@ -347,98 +347,6 @@ export default function MenuBrowsing() {
     setPendingTopUpPaymentId(null);
   };
 
-  const handleBypassOrderPayment = async () => {
-    if (!pendingOrderId) return;
-    const token = sessionStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      const res = await fetch(`http://localhost:3001/payments/bypass-order/${pendingOrderId}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.ok) {
-        if (pollIntervalId) {
-          clearInterval(pollIntervalId);
-          setPollIntervalId(null);
-        }
-        
-        // Retrieve final status from status check
-        const statusRes = await fetch(`http://localhost:3001/payments/status/${pendingOrderId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const statusData = await statusRes.json();
-
-        if (statusRes.ok && statusData.status === "COMPLETED") {
-          setMpesaReceipt(statusData.transactionReference || "MOCK-REF");
-          setPaymentStatus("SUCCESS");
-          setOrderSuccess({
-            id: pendingOrderId,
-            status: "CONFIRMED",
-            totalAmount: cartTotal,
-            referenceCode: statusData.referenceCode,
-            items: [],
-          });
-          setCart([]);
-          setPointsToRedeemInput("");
-          void fetchWalletBalance();
-          void fetchLoyaltyStatus();
-        }
-      } else {
-        const data = await res.json();
-        alert(data.message || "Failed to bypass order payment verification");
-      }
-    } catch (err) {
-      console.error("Bypass checkout error:", err);
-    }
-  };
-
-  const handleBypassTopUpPayment = async () => {
-    if (!pendingTopUpPaymentId) return;
-    const token = sessionStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      const res = await fetch(`http://localhost:3001/payments/bypass-payment/${pendingTopUpPaymentId}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.ok) {
-        if (topUpPollIntervalId) {
-          clearInterval(topUpPollIntervalId);
-          setTopUpPollIntervalId(null);
-        }
-
-        // Retrieve receipt number from status check
-        const statusRes = await fetch(`http://localhost:3001/payments/status/payment/${pendingTopUpPaymentId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const statusData = await statusRes.json();
-
-        if (statusRes.ok && statusData.status === "COMPLETED") {
-          setTopUpReceipt(statusData.transactionReference || "MOCK-REF");
-          setTopUpStatus("SUCCESS");
-          void fetchWalletBalance();
-        }
-      } else {
-        const data = await res.json();
-        alert(data.message || "Failed to bypass top-up verification");
-      }
-    } catch (err) {
-      console.error("Bypass top-up error:", err);
-    }
-  };
-
   const handleWalletTopUp = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = sessionStorage.getItem("token");
@@ -1429,7 +1337,6 @@ export default function MenuBrowsing() {
                 </div>
                 <span style={{ fontSize: "10px", color: "rgba(114, 106, 99, 0.6)", fontStyle: "italic", animation: "pulse 1.5s infinite" }}>Verifying status automatically...</span>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
-                  <button onClick={handleBypassOrderPayment} className="slide-btn" style={{ width: "100%", backgroundColor: "#636e52" }}>I Have Paid (Proceed)</button>
                   <button onClick={cancelPaymentVerification} className="slide-btn" style={{ width: "100%", backgroundColor: "transparent", color: "#726a63", border: "1px solid rgba(114,106,99,0.3)", boxShadow: "none" }}>Cancel & Edit Order</button>
                 </div>
               </div>
@@ -1510,7 +1417,6 @@ export default function MenuBrowsing() {
                 </p>
                 <span style={{ fontSize: "10px", color: "rgba(114,106,99,0.6)", fontStyle: "italic", animation: "pulse 1.5s infinite" }}>Verifying status automatically...</span>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
-                  <button onClick={handleBypassTopUpPayment} className="slide-btn" style={{ width: "100%", backgroundColor: "#636e52" }}>I Have Paid (Proceed)</button>
                   <button onClick={cancelTopUpVerification} className="slide-btn" style={{ width: "100%", backgroundColor: "transparent", color: "#726a63", border: "1px solid rgba(114,106,99,0.3)", boxShadow: "none" }}>Cancel Polling</button>
                 </div>
               </div>

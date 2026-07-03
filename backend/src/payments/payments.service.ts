@@ -824,11 +824,16 @@ export class PaymentsService {
       if (res.ok) {
         const data = await res.json() as { ResultCode: string; ResultDesc: string };
         const resultCode = Number(data.ResultCode);
+        const resultDesc = data.ResultDesc || '';
+
         if (resultCode === 0) {
           await this.completePayment(payment, `MPESA_${payment.transactionReference}`);
+        } else if (resultDesc.toLowerCase().includes('processing')) {
+          // Keep it PENDING since Safaricom is still processing the transaction
+          this.logger.log(`M-Pesa payment ${payment.id} is still processing...`);
         } else if (resultCode !== 1032 && resultCode !== 0) {
           // If transaction is fully resolved and failed, fail the payment record
-          await this.failPayment(payment, data.ResultDesc);
+          await this.failPayment(payment, resultDesc);
         }
       }
     } catch (err) {
@@ -836,29 +841,7 @@ export class PaymentsService {
     }
   }
 
-  async bypassOrderPayment(orderId: string): Promise<void> {
-    const payment = await this.paymentRepository.findOne({
-      where: { orderId, method: 'MPESA', status: 'PENDING' },
-    });
 
-    if (!payment) {
-      throw new BadRequestException(`No pending M-Pesa payment found for order: ${orderId}`);
-    }
-
-    await this.completePayment(payment, `BYPASS_${orderId.substring(0, 8).toUpperCase()}_${Date.now()}`);
-  }
-
-  async bypassTopUpPayment(paymentId: string): Promise<void> {
-    const payment = await this.paymentRepository.findOne({
-      where: { id: paymentId, method: 'MPESA', status: 'PENDING' },
-    });
-
-    if (!payment) {
-      throw new BadRequestException(`No pending M-Pesa top-up found with ID: ${paymentId}`);
-    }
-
-    await this.completePayment(payment, `BYPASS_TOPUP_${paymentId.substring(0, 8).toUpperCase()}_${Date.now()}`);
-  }
 
   async getPaymentStatus(orderId: string): Promise<{
     status: string;
@@ -997,7 +980,21 @@ export class PaymentsService {
     try {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), 30000); // 30s timeout per attempt
-      const res = await fetch(url, { ...options, signal: controller.signal });
+      
+      // Add standard User-Agent to bypass Safaricom WAF / Incapsula challenges
+      const headers = new Headers(options.headers);
+      if (!headers.has('User-Agent')) {
+        headers.set(
+          'User-Agent',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        );
+      }
+
+      const res = await fetch(url, { 
+        ...options, 
+        headers,
+        signal: controller.signal 
+      });
       clearTimeout(id);
 
       if (!res.ok && retries > 0 && res.status >= 500) {

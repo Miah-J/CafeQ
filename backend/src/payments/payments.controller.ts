@@ -101,19 +101,7 @@ export class PaymentsController {
     return this.paymentsService.getPaymentStatusByPaymentId(paymentId);
   }
 
-  @Post('bypass-order/:orderId')
-  @UseGuards(JwtAuthGuard)
-  async bypassOrder(@Param('orderId') orderId: string) {
-    await this.paymentsService.bypassOrderPayment(orderId);
-    return { success: true };
-  }
 
-  @Post('bypass-payment/:paymentId')
-  @UseGuards(JwtAuthGuard)
-  async bypassPayment(@Param('paymentId') paymentId: string) {
-    await this.paymentsService.bypassTopUpPayment(paymentId);
-    return { success: true };
-  }
 
   @Post('mpesa/callback')
   @HttpCode(HttpStatus.OK)
