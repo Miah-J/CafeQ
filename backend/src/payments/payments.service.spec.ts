@@ -12,6 +12,7 @@ import { ReferenceService } from '../orders/reference.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { KitchenService } from '../kitchen/kitchen.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { DataSource } from 'typeorm';
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
@@ -24,6 +25,7 @@ describe('PaymentsService', () => {
   let referenceServiceMock: any;
   let kitchenServiceMock: any;
   let loyaltyServiceMock: any;
+  let dataSourceMock: any;
 
   beforeEach(async () => {
     paymentRepoMock = {
@@ -67,6 +69,14 @@ describe('PaymentsService', () => {
       restorePoints: jest.fn(),
     };
 
+    const referenceNumberRepoMock = {
+      findOne: jest.fn().mockResolvedValue({ referenceCode: 'MOCKRF' }),
+    };
+
+    dataSourceMock = {
+      getRepository: jest.fn().mockReturnValue(referenceNumberRepoMock),
+    };
+
     configServiceMock = {
       get: jest.fn((key: string) => {
         if (key === 'mpesa.callbackUrl')
@@ -91,6 +101,7 @@ describe('PaymentsService', () => {
         { provide: ReferenceService, useValue: referenceServiceMock },
         { provide: KitchenService, useValue: kitchenServiceMock },
         { provide: LoyaltyService, useValue: loyaltyServiceMock },
+        { provide: DataSource, useValue: dataSourceMock },
       ],
     }).compile();
 

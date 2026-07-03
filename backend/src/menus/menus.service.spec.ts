@@ -7,6 +7,7 @@ import { Dish } from './entities/dish.entity';
 import { OrderItem } from '../orders/entities/order-item.entity';
 import { RedisService } from '../db/redis.service';
 import { BadRequestException } from '@nestjs/common';
+import { KitchenService } from '../kitchen/kitchen.service';
 
 describe('MenusService', () => {
   let service: MenusService;
@@ -15,6 +16,7 @@ describe('MenusService', () => {
   let orderItemRepoMock: any;
   let redisServiceMock: any;
   let redisClientMock: any;
+  let kitchenServiceMock: any;
 
   beforeEach(async () => {
     menuRepoMock = {
@@ -59,6 +61,10 @@ describe('MenusService', () => {
       getClient: jest.fn().mockReturnValue(redisClientMock),
     };
 
+    kitchenServiceMock = {
+      triggerDishUpdate: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MenusService,
@@ -66,6 +72,7 @@ describe('MenusService', () => {
         { provide: getRepositoryToken(Dish), useValue: dishRepoMock },
         { provide: getRepositoryToken(OrderItem), useValue: orderItemRepoMock },
         { provide: RedisService, useValue: redisServiceMock },
+        { provide: KitchenService, useValue: kitchenServiceMock },
       ],
     }).compile();
 
@@ -169,7 +176,10 @@ describe('MenusService', () => {
 
       const result = await service.publishMenu('menu-123');
 
-      expect(menuRepoMock.update).toHaveBeenCalledWith({}, { isActive: false });
+      expect(menuRepoMock.update).toHaveBeenCalledWith(
+        { isActive: true },
+        { isActive: false },
+      );
       expect(redisClientMock.set).toHaveBeenCalledTimes(2);
       expect(redisClientMock.set).toHaveBeenNthCalledWith(
         1,
